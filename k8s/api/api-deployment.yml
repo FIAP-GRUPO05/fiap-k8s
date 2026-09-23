@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-deployment
+  labels:
+    app: api-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-pod         
+  template:
+    metadata:
+      labels:
+        app: api-pod       
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: api-container
+        image: wzzylima/tc-fiap:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - secretRef:
+            name: api-secret
+        resources:
+          # Base do calculo do HPA: "70% de CPU" significa 70% destas requests.
+          requests:
+            cpu: "250m"      # 0,25 vCPU
+            memory: "348Mi"
