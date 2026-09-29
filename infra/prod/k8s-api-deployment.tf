@@ -24,10 +24,11 @@ spec:
         app: api
       annotations:
         appPublicUrlHash: "${sha1(var.appPublicUrl)}"
+        jwtConfigHash: "${sha1("${var.jwtIssuer}|${var.jwtAudience}")}"
     spec:
       containers:
       - name: api-container
-        image: wzzylima/tc-fiap:latest
+        image: timbeck97/tc-fiap:latest
         ports:
         - containerPort: 8080
         env:
