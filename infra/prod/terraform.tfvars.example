@@ -3,12 +3,16 @@ postgresUser     = "oficina"
 postgresPassword = "troque-esta-senha"
 jwtSecret        = "chave-secreta-com-no-minimo-256-bits-de-comprimento"
 
-mailHost               = "smtp.gmail.com"
-mailPort               = 587
-mailUsername           = "sua-conta@gmail.com"
-mailPassword           = "app-password-de-16-caracteres"
-# notificationsEmailFrom = "alias@gmail.com"   # opcional: vazio usa o mailUsername
+accessKeyId      = ""
+secretAccessKey  = ""
+sessionToken     = ""
+
 
 # Preencha na SEGUNDA execucao, com o valor do output api_public_url.
 # Deixar vazio faz os links do e-mail apontarem para localhost.
 # appPublicUrl = "http://a1b2c3d4.us-east-1.elb.amazonaws.com:8080"
+
+# Tokens RS256 emitidos pela lambda-token (output jwt_issuer do fiap-lambda).
+# Vazio = a API continua validando o HS256 assinado com jwtSecret.
+jwtIssuer   = ""
+jwtAudience = "fiap-api"

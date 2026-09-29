@@ -33,6 +33,16 @@ variable "jwtSecret" {
   sensitive   = true
   description = "Chave de assinatura do JWT (mínimo 256 bits)"
 }
+variable "jwtIssuer" {
+  type        = string
+  default     = ""
+  description = "Issuer dos tokens RS256 da lambda-token (output jwt_issuer do fiap-lambda). Vazio mantém o HS256 com jwtSecret"
+}
+variable "jwtAudience" {
+  type        = string
+  default     = "fiap-api"
+  description = "Claim aud exigida nos tokens RS256 (mesmo jwt_audience do fiap-lambda)"
+}
 variable "clusterName" {
   type        = string
   default     = "my-cluster"
@@ -74,6 +84,18 @@ variable "notificationsEmailFrom" {
 }
 
 variable "appPublicUrl" {
-  type        = string
-  default     = ""
+  type    = string
+  default = ""
+}
+variable "accessKeyId" {
+  type    = string
+  default = ""
+}
+variable "secretAccessKey" {
+  type    = string
+  default = ""
+}
+variable "sessionToken" {
+  type    = string
+  default = ""
 }
