@@ -99,3 +99,9 @@ variable "sessionToken" {
   type    = string
   default = ""
 }
+
+variable "newrelic_license_key" {
+  type        = string
+  sensitive   = true
+  description = "License key (ingest) da conta New Relic usada pelo nri-bundle"
+}

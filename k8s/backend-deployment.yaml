@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: wzzylima/tc-fiap:latest
+        image: timbeck97/tc-fiap:latest
         imagePullPolicy: Always
         ports:
         - name: http
