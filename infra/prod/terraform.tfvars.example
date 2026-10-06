@@ -16,3 +16,6 @@ sessionToken     = ""
 # Vazio = a API continua validando o HS256 assinado com jwtSecret.
 jwtIssuer   = ""
 jwtAudience = "fiap-api"
+
+# License key (ingest) da conta New Relic
+newrelic_license_key = "sua-license-key-new-relic"

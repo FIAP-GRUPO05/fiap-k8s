@@ -25,6 +25,7 @@ spec:
       annotations:
         appPublicUrlHash: "${sha1(var.appPublicUrl)}"
         jwtConfigHash: "${sha1("${var.jwtIssuer}|${var.jwtAudience}")}"
+        instrumentation.opentelemetry.io/inject-java: "true"
     spec:
       containers:
       - name: api-container
