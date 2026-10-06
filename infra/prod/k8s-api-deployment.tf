@@ -1,5 +1,5 @@
 resource "kubectl_manifest" "api-deployment" {
-  depends_on = [aws_eks_cluster.main, aws_eks_addon.metrics_server, kubectl_manifest.api-secret]
+  depends_on = [aws_eks_cluster.main, aws_eks_addon.metrics_server, kubectl_manifest.api-secret, kubectl_manifest.newrelic_instrumentation_java]
   # O banco vem do fiap-database, aplicado depois deste repositório: esperar o
   # rollout aqui travaria o apply até o timeout.
   wait_for_rollout = false
@@ -25,7 +25,6 @@ spec:
       annotations:
         appPublicUrlHash: "${sha1(var.appPublicUrl)}"
         jwtConfigHash: "${sha1("${var.jwtIssuer}|${var.jwtAudience}")}"
-        instrumentation.opentelemetry.io/inject-java: "true"
     spec:
       containers:
       - name: api-container
@@ -35,6 +34,9 @@ spec:
         env:
         - name: SPRING_OUTPUT_ANSI_ENABLED
           value: "never"
+        # Heap proporcional ao limite do container
+        - name: JAVA_OPTS
+          value: "-XX:MaxRAMPercentage=60.0"
         envFrom:
         - secretRef:
             name: api-secret
@@ -65,6 +67,6 @@ spec:
             memory: "348Mi"
           limits:
             cpu: "500m"      # teto de 0,5 vCPU
-            memory: "512Mi"
+            memory: "768Mi"  # inclui o agente Java do New Relic
 YAML
 }
