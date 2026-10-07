@@ -89,19 +89,33 @@ variable "appPublicUrl" {
 }
 variable "accessKeyId" {
   type    = string
-  default = ""
 }
 variable "secretAccessKey" {
   type    = string
-  default = ""
 }
 variable "sessionToken" {
   type    = string
-  default = ""
 }
 
 variable "newrelic_license_key" {
   type        = string
   sensitive   = true
   description = "License key (ingest) da conta New Relic usada pelo nri-bundle"
+}
+
+variable "newrelic_account_id" {
+  type        = number
+  description = "ID da conta New Relic onde o dashboard é criado"
+}
+
+variable "newrelic_api_key" {
+  type        = string
+  sensitive   = true
+  description = "User API key (NRAK-...) usada pelo provider newrelic para criar o dashboard"
+}
+
+variable "newrelic_region" {
+  type        = string
+  default     = "US"
+  description = "Região da conta New Relic (US ou EU)"
 }

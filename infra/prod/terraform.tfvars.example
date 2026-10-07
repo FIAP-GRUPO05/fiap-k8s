@@ -19,3 +19,9 @@ jwtAudience = "fiap-api"
 
 # License key (ingest) da conta New Relic
 newrelic_license_key = "sua-license-key-new-relic"
+
+# Conta e User API key (NRAK-...) usadas pelo provider newrelic para criar o
+# dashboard. A license key acima só envia dados e não serve aqui.
+newrelic_account_id = 1234567
+newrelic_api_key    = "NRAK-sua-user-api-key"
+# newrelic_region   = "US"
