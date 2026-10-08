@@ -36,7 +36,7 @@ variable "jwtSecret" {
 variable "jwtIssuer" {
   type        = string
   default     = ""
-  description = "Issuer dos tokens RS256 da lambda-token (output jwt_issuer do fiap-lambda). Vazio mantém o HS256 com jwtSecret"
+  description = "Issuer dos tokens RS256. Vazio usa o bucket de JWKS do fiap-lambda (fiap-jwt-jwks-<conta>), calculado em data.tf"
 }
 variable "jwtAudience" {
   type        = string
@@ -58,43 +58,24 @@ variable "clusterLogTypes" {
   default     = ["api", "audit", "authenticator"]
   description = "Logs do control plane. controllerManager e scheduler ficam de fora por serem os mais verbosos"
 }
-variable "mailHost" {
-  type        = string
-  default     = "smtp.gmail.com"
-  description = "Host SMTP usado para as notificações por e-mail"
-}
-variable "mailPort" {
-  type        = number
-  default     = 587
-  description = "Porta SMTP. 587 = STARTTLS (a porta 25 é bloqueada na saída da AWS)"
-}
-variable "mailUsername" {
-  type        = string
-  description = "Conta que autentica no SMTP. No Gmail, o endereço completo (ex: oficina@gmail.com)"
-}
-variable "mailPassword" {
-  type        = string
-  sensitive   = true
-  description = "Senha SMTP. No Gmail, a App Password de 16 caracteres (exige verificação em duas etapas)"
-}
-variable "notificationsEmailFrom" {
-  type        = string
-  default     = ""
-  description = "Remetente dos e-mails. Vazio usa o mailUsername, que é o que o Gmail exige; preencha apenas para um alias verificado na conta"
-}
 
 variable "appPublicUrl" {
-  type    = string
-  default = ""
+  type        = string
+  default     = ""
+  description = "Base dos links dos e-mails. No CI, o segundo apply passa o output api_public_url"
 }
 variable "accessKeyId" {
-  type    = string
+  type        = string
+  sensitive   = true
+  description = "Credencial do Learner Lab que a API usa para invocar a lambda-email"
 }
 variable "secretAccessKey" {
-  type    = string
+  type      = string
+  sensitive = true
 }
 variable "sessionToken" {
-  type    = string
+  type      = string
+  sensitive = true
 }
 
 variable "newrelic_license_key" {
