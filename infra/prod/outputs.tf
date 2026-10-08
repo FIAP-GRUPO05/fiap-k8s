@@ -1,6 +1,4 @@
-# Hostname do Load Balancer que expoe a API. E o valor que alimenta a variavel
-# appPublicUrl: rode o apply, copie daqui para o terraform.tfvars e aplique de novo
-# para que os links do e-mail passem a apontar para producao.
+
 data "kubernetes_service" "api" {
   depends_on = [kubectl_manifest.api-service]
 

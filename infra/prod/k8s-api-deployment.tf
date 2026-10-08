@@ -24,7 +24,7 @@ spec:
         app: api
       annotations:
         appPublicUrlHash: "${sha1(var.appPublicUrl)}"
-        jwtConfigHash: "${sha1("${var.jwtIssuer}|${var.jwtAudience}")}"
+        jwtConfigHash: "${sha1("${local.jwt_issuer}|${var.jwtAudience}")}"
     spec:
       containers:
       - name: api-container
