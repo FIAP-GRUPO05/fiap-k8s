@@ -27,3 +27,8 @@ resource "aws_eks_access_policy_association" "eks_policy_console" {
 
   depends_on = [aws_eks_access_entry.access_entry_console]
 }
+resource "time_sleep" "wait_eks_access" {
+  create_duration = "60s"
+
+  depends_on = [aws_eks_access_policy_association.eks_policy_console]
+}

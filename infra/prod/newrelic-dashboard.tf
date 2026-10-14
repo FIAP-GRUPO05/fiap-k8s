@@ -100,7 +100,7 @@ resource "newrelic_one_dashboard" "fiap_api" {
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT average(cpuUsedCores) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName TIMESERIES"
+        query = "SELECT average(cpuUsedCores) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName SINCE 5 minutes ago TIMESERIES"
       }
     }
 
@@ -111,7 +111,7 @@ resource "newrelic_one_dashboard" "fiap_api" {
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT average(memoryWorkingSetBytes) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName TIMESERIES"
+        query = "SELECT average(memoryWorkingSetBytes) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName SINCE 5 minutes ago TIMESERIES"
       }
     }
 
@@ -122,7 +122,7 @@ resource "newrelic_one_dashboard" "fiap_api" {
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT uniqueCount(podName) FROM K8sContainerSample WHERE ${local.nr_containers} TIMESERIES"
+        query = "SELECT uniqueCount(podName) FROM K8sContainerSample WHERE ${local.nr_containers} SINCE 5 minutes ago TIMESERIES"
       }
     }
 
@@ -133,7 +133,7 @@ resource "newrelic_one_dashboard" "fiap_api" {
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT latest(restartCount) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName"
+        query = "SELECT latest(restartCount) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName SINCE 5 minutes ago"
       }
     }
   }
