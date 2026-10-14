@@ -3,9 +3,7 @@ postgresUser     = "oficina"
 postgresPassword = "troque-esta-senha"
 jwtSecret        = "chave-secreta-com-no-minimo-256-bits-de-comprimento"
 
-accessKeyId      = ""
-secretAccessKey  = ""
-sessionToken     = ""
+# accessKeyId, secretAccessKey e sessionToken vêm de TF_VAR_* (ver comandos-terraform.md)
 
 
 jwtAudience = "fiap-api"

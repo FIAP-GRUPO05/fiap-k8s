@@ -1,6 +1,6 @@
 resource "kubectl_manifest" "namespace" {
 
-  depends_on = [aws_eks_access_policy_association.eks_policy_console]
+  depends_on = [time_sleep.wait_eks_access]
 
   yaml_body = <<YAML
 apiVersion: v1

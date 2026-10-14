@@ -1,29 +1,11 @@
 name: Terraform
 
-# Ordem entre os repositórios:
-#   apply:   fiap-k8s → fiap-database → fiap-lambda
-#   destroy: fiap-lambda → fiap-database → fiap-k8s
-# Com o secret DISPATCH_TOKEN, um workflow_dispatch com "chain" (ou um repository_dispatch
-# vindo do repositório anterior) dispara o próximo da fila ao terminar.
-
 on:
   pull_request:
     branches: [develop, main]
   push:
     branches: [develop, main]
   workflow_dispatch:
-    inputs:
-      action:
-        description: "apply ou destroy"
-        type: choice
-        options: [apply, destroy]
-        default: apply
-      chain:
-        description: "Disparar o próximo repositório ao terminar"
-        type: boolean
-        default: true
-  repository_dispatch:
-    types: [apply, destroy]
 
 permissions:
   contents: read
@@ -35,8 +17,6 @@ concurrency:
 env:
   AWS_REGION: us-east-1
   TF_DIR: infra/prod
-  NEXT_ON_APPLY: fiap-database
-  NEXT_ON_DESTROY: ""
 
 jobs:
   validate:
@@ -58,17 +38,14 @@ jobs:
           terraform -chdir=$TF_DIR validate
 
   deploy:
-    name: Deploy (${{ github.event.inputs.action || github.event.action || 'apply' }})
+    name: Deploy
     needs: validate
     # develop (homologação) para no validate: o Learner Lab comporta um ambiente só.
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'repository_dispatch'
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
-      ACTION: ${{ github.event.inputs.action || github.event.action || 'apply' }}
-      CHAIN: ${{ github.event_name == 'repository_dispatch' || github.event.inputs.chain == 'true' }}
       TF_IN_AUTOMATION: "true"
       TF_VAR_postgresPassword: ${{ secrets.POSTGRES_PASSWORD }}
       TF_VAR_jwtSecret: ${{ secrets.JWT_SECRET }}
@@ -106,7 +83,6 @@ jobs:
             -backend-config="encrypt=true"
 
       - name: terraform apply
-        if: env.ACTION == 'apply'
         working-directory: ${{ env.TF_DIR }}
         run: |
           # Reaproveita o appPublicUrl do run anterior para não zerar os links do e-mail
@@ -132,25 +108,3 @@ jobs:
             terraform apply -auto-approve -input=false -var "appPublicUrl=$URL"
           fi
           echo "### API: $URL" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: terraform destroy
-        if: env.ACTION == 'destroy'
-        working-directory: ${{ env.TF_DIR }}
-        run: |
-          PREV_URL=$(terraform output -raw api_public_url 2>/dev/null || true)
-          terraform destroy -auto-approve -input=false -var "appPublicUrl=$PREV_URL"
-
-      - name: Disparar o próximo repositório
-        env:
-          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
-        if: env.CHAIN == 'true'
-        run: |
-          if [ "$ACTION" = "destroy" ]; then NEXT="$NEXT_ON_DESTROY"; else NEXT="$NEXT_ON_APPLY"; fi
-          if [ -z "$NEXT" ]; then
-            echo "Último repositório da fila para '$ACTION'."
-          elif [ -z "$GH_TOKEN" ]; then
-            echo "::warning::Sem o secret DISPATCH_TOKEN; rode o $NEXT manualmente."
-          else
-            gh api "repos/${{ github.repository_owner }}/$NEXT/dispatches" -f event_type="$ACTION"
-            echo "Disparado: $NEXT ($ACTION)"
-          fi

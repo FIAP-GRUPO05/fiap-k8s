@@ -15,8 +15,6 @@ spec:
     name: api                  
   minReplicas: 2                
   maxReplicas: 5                
-  # CPU e memoria dependem do metrics-server (aws_eks_addon.metrics_server, em cluster.tf);
-  # sem ele o HPA fica em <unknown>/70% e nao escala.
   metrics:
   - type: Resource
     resource:
@@ -24,12 +22,6 @@ spec:
       target:
         type: Utilization
         averageUtilization: 70 
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30 
