@@ -24,6 +24,7 @@ spec:
         app: api
       annotations:
         appPublicUrlHash: "${sha1(var.appPublicUrl)}"
+        mailTypeHash: "${sha1(var.mailType)}"
         jwtConfigHash: "${sha1("${local.jwt_issuer}|${var.jwtAudience}")}"
     spec:
       containers:
@@ -34,7 +35,10 @@ spec:
         env:
         - name: SPRING_OUTPUT_ANSI_ENABLED
           value: "never"
-        # Heap proporcional ao limite do container
+
+        - name: SPRING_PROFILES_ACTIVE
+          value: "json-logs"
+    
         - name: JAVA_OPTS
           value: "-XX:MaxRAMPercentage=60.0"
         envFrom:

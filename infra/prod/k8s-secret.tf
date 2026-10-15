@@ -12,7 +12,7 @@ stringData:
   SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres-service:5432/${var.postgresDb}"
   SPRING_DATASOURCE_USERNAME: "${var.postgresUser}"
   SPRING_DATASOURCE_PASSWORD: "${var.postgresPassword}"
-  MAIL_TIPE: "LAMBDA"
+  MAIL_TIPE: "${var.mailType}"
   JWT_SECRET: "${var.jwtSecret}"
   JWT_ISSUER: "${local.jwt_issuer}"
   JWT_AUDIENCE: "${var.jwtAudience}"

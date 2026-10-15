@@ -16,3 +16,7 @@ newrelic_license_key = "sua-license-key-new-relic"
 newrelic_account_id = 1234567
 newrelic_api_key    = "NRAK-sua-user-api-key"
 # newrelic_region   = "US"
+
+# Envio dos e-mails de status da OS: LAMBDA (padrão), DEFAULT (SMTP) ou NONE (só log,
+# para testes de carga não estourarem o limite de envios do Gmail)
+# mailType = "NONE"

@@ -21,7 +21,8 @@ resource "helm_release" "newrelic_bundle" {
     { name = "k8s-agents-operator.enabled", value = "true" },
   ]
 
-  depends_on = [aws_eks_node_group.main]
+ 
+  depends_on = [aws_eks_node_group.main, time_sleep.wait_eks_access]
 }
 
 # Injeta o agente Java do New Relic nos pods da API (label app=api), sem
@@ -44,6 +45,8 @@ spec:
         value: "fiap-api"
       - name: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED
         value: "true"
+      - name: NEW_RELIC_APPLICATION_LOGGING_FORWARDING_ENABLED
+        value: "false"
   podLabelSelector:
     matchExpressions:
       - key: "app"

@@ -16,6 +16,12 @@ resource "aws_eks_node_group" "main" {
     max_unavailable = 1
   }
 
-  # A access entry EC2_LINUX precisa existir antes dos nos subirem
-  depends_on = [aws_eks_cluster.main, aws_eks_access_entry.access_entry_lab]
+ 
+  depends_on = [
+    aws_eks_cluster.main,
+    aws_eks_access_entry.access_entry_lab,
+    aws_internet_gateway.main,
+    aws_route_table_association.rt_association_public,
+    aws_route_table_association.rt_association_private,
+  ]
 }
