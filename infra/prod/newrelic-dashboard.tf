@@ -1,8 +1,61 @@
 locals {
-  # Filtros reaproveitados nas consultas: transações do agente Java da API e
-  # containers da API no namespace prod do cluster.
-  nr_app        = "appName = 'fiap-api'"
+
+  nr_app            = "appName = 'fiap-api'"
+  nr_api            = "appName = 'fiap-api' AND transactionType = 'Web' AND request.uri NOT LIKE '/actuator%'"
+  nr_service_orders = "${local.nr_api} AND request.uri LIKE '/service-orders%'"
+
   nr_containers = "clusterName = '${aws_eks_cluster.main.name}' AND namespaceName = 'prod' AND containerName = 'api-container'"
+
+  nr_logs = "cluster_name = '${aws_eks_cluster.main.name}' AND namespace_name = 'prod' AND container_name = 'api-container'"
+
+  nr_service_order_alert_name = "Falhas no processamento de ordens de serviço"
+
+  nr_health_monitor_name = "fiap-api health"
+  nr_api_host            = try(data.kubernetes_service.api.status[0].load_balancer[0].ingress[0].hostname, "")
+  nr_synthetic           = "monitorName = '${local.nr_health_monitor_name}'"
+}
+
+# O hostname do Load Balancer só existe alguns minutos depois do primeiro apply: até lá o
+# monitor fica desativado, com uma URL provisória, e é ativado no apply seguinte
+resource "newrelic_synthetics_monitor" "api_health" {
+  name              = local.nr_health_monitor_name
+  type              = "SIMPLE"
+  period            = "EVERY_MINUTE"
+  status            = local.nr_api_host != "" ? "ENABLED" : "DISABLED"
+  uri               = local.nr_api_host != "" ? "http://${local.nr_api_host}:8080/actuator/health" : "http://example.com/actuator/health"
+  validation_string = "UP"
+  locations_public  = ["US_EAST_1", "SA_EAST_1"]
+}
+
+# Alerta sem notificação: o incidente fica só no New Relic (Alerts > Issues) e no dashboard
+resource "newrelic_alert_policy" "fiap_api" {
+  name                = "FIAP API"
+  incident_preference = "PER_CONDITION"
+}
+
+# Abre incidente quando um endpoint de OS responde 5xx; fecha após 1 minuto sem falhas
+resource "newrelic_nrql_alert_condition" "service_order_failures" {
+  policy_id                    = newrelic_alert_policy.fiap_api.id
+  type                         = "static"
+  name                         = local.nr_service_order_alert_name
+  enabled                      = true
+  violation_time_limit_seconds = 3600
+  aggregation_window           = 60
+  aggregation_method           = "event_flow"
+  aggregation_delay            = 120
+  fill_option                  = "static"
+  fill_value                   = 0
+
+  nrql {
+    query = "SELECT count(*) FROM Transaction WHERE ${local.nr_service_orders} AND http.statusCode >= 500"
+  }
+
+  critical {
+    operator              = "above"
+    threshold             = 0
+    threshold_duration    = 60
+    threshold_occurrences = "at_least_once"
+  }
 }
 
 resource "newrelic_one_dashboard" "fiap_api" {
@@ -10,130 +63,119 @@ resource "newrelic_one_dashboard" "fiap_api" {
   permissions = "public_read_only"
 
   page {
-    name = "API"
+    name = "Monitoramento"
 
-    widget_billboard {
-      title  = "Requisições (30 min)"
+    widget_line {
+      title  = "Latência das APIs (ms)"
       row    = 1
       column = 1
-      width  = 4
+      width  = 6
       height = 3
       nrql_query {
-        query = "SELECT count(*) FROM Transaction WHERE ${local.nr_app} SINCE 30 minutes ago"
+        query = "SELECT average(duration * 1000) AS 'média', percentile(duration * 1000, 95) FROM Transaction WHERE ${local.nr_api} TIMESERIES"
       }
     }
 
     widget_billboard {
-      title  = "Taxa de erro (%)"
+      title  = "Uptime do healthcheck (%)"
       row    = 1
-      column = 5
-      width  = 4
+      column = 7
+      width  = 6
       height = 3
       nrql_query {
-        query = "SELECT percentage(count(*), WHERE error IS true) FROM Transaction WHERE ${local.nr_app} SINCE 30 minutes ago"
-      }
-    }
-
-    widget_billboard {
-      title  = "Latência p95 (s)"
-      row    = 1
-      column = 9
-      width  = 4
-      height = 3
-      nrql_query {
-        query = "SELECT percentile(duration, 95) FROM Transaction WHERE ${local.nr_app} SINCE 30 minutes ago"
+        query = "SELECT percentage(count(*), WHERE result = 'SUCCESS') AS 'uptime', latest(result) AS 'último check' FROM SyntheticCheck WHERE ${local.nr_synthetic}"
       }
     }
 
     widget_line {
-      title  = "Throughput (req/min)"
+      title  = "CPU por pod (cores)"
       row    = 4
       column = 1
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT rate(count(*), 1 minute) FROM Transaction WHERE ${local.nr_app} TIMESERIES"
+        query = "SELECT average(cpuUsedCores) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName TIMESERIES"
       }
     }
 
     widget_line {
-      title  = "Latência média e p95 (s)"
+      title  = "Memória por pod (MB)"
       row    = 4
       column = 7
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT average(duration), percentile(duration, 95) FROM Transaction WHERE ${local.nr_app} TIMESERIES"
+        query = "SELECT average(memoryWorkingSetBytes) / 1e6 FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName TIMESERIES"
       }
     }
 
-    widget_area {
-      title  = "Respostas por status HTTP"
+    widget_line {
+      title  = "Falhas no processamento de ordens de serviço (5xx)"
       row    = 7
       column = 1
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT count(*) FROM Transaction WHERE ${local.nr_app} FACET http.statusCode TIMESERIES"
+        query = "SELECT count(*) FROM Transaction WHERE ${local.nr_service_orders} AND http.statusCode >= 500 TIMESERIES"
       }
     }
 
     widget_table {
-      title  = "Endpoints mais lentos"
+      title  = "Logs (JSON) com correlação"
       row    = 7
       column = 7
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT count(*), average(duration), percentile(duration, 95) FROM Transaction WHERE ${local.nr_app} FACET name LIMIT 10"
+        query = "SELECT correlationId, timestamp, level, message, trace.id FROM Log WHERE ${local.nr_logs} LIMIT 100"
+      }
+    }
+
+    widget_table {
+      title  = "Alertas de falhas no processamento de ordens de serviço"
+      row    = 10
+      column = 1
+      width  = 12
+      height = 3
+      nrql_query {
+        query = "SELECT timestamp, event AS 'evento', priority AS 'prioridade', title AS 'incidente' FROM NrAiIncident WHERE conditionName = '${local.nr_service_order_alert_name}' LIMIT 50"
       }
     }
   }
 
   page {
-    name = "Kubernetes"
+    name = "Ordens de serviço"
 
-    widget_line {
-      title  = "CPU por pod (cores)"
+    widget_stacked_bar {
+      title  = "Volume de ordens de serviço por situação (últimos 10 minutos)"
       row    = 1
       column = 1
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT average(cpuUsedCores) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName SINCE 5 minutes ago TIMESERIES"
+        query = "SELECT count(*) FROM ServiceOrderStatusChanged FACET newStatus SINCE 10 minutes ago TIMESERIES 1 minute"
       }
     }
 
-    widget_line {
-      title  = "Memória por pod (bytes)"
+    widget_billboard {
+      title  = "Tempo médio de execução por status (min)"
       row    = 1
       column = 7
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT average(memoryWorkingSetBytes) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName SINCE 5 minutes ago TIMESERIES"
-      }
-    }
-
-    widget_line {
-      title  = "Pods da API em execução (HPA)"
-      row    = 4
-      column = 1
-      width  = 6
-      height = 3
-      nrql_query {
-        query = "SELECT uniqueCount(podName) FROM K8sContainerSample WHERE ${local.nr_containers} SINCE 5 minutes ago TIMESERIES"
+        query = "SELECT filter(average(timeInPreviousStatusSeconds), WHERE previousStatus = 'IN_DIAGNOSIS') / 60 AS 'Diagnóstico', filter(average(timeInPreviousStatusSeconds), WHERE previousStatus = 'IN_EXECUTION') / 60 AS 'Execução', filter(average(timeInPreviousStatusSeconds), WHERE previousStatus = 'FINALIZED') / 60 AS 'Finalização' FROM ServiceOrderStatusChanged SINCE 7 days ago"
       }
     }
 
     widget_table {
-      title  = "Restarts por pod"
+      title  = "Erros e falhas nas integrações"
       row    = 4
-      column = 7
-      width  = 6
+      column = 1
+      width  = 12
       height = 3
       nrql_query {
-        query = "SELECT latest(restartCount) FROM K8sContainerSample WHERE ${local.nr_containers} FACET podName SINCE 5 minutes ago"
+        query = "SELECT count(*) AS 'falhas', latest(message) AS 'última mensagem' FROM Log WHERE ${local.nr_logs} AND level = 'ERROR' AND logger_name LIKE '%ServiceOrderStatusChangedNotificationHandler' FACET capture(stack_trace, r'(?s)(?P<erro>[^:]+):.*') AS 'erro'"
       }
     }
   }

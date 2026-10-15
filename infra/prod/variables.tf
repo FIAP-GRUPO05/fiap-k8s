@@ -64,6 +64,17 @@ variable "appPublicUrl" {
   default     = ""
   description = "Base dos links dos e-mails. No CI, o segundo apply passa o output api_public_url"
 }
+
+variable "mailType" {
+  type        = string
+  default     = "LAMBDA"
+  description = "Envio dos e-mails de status da OS (MAIL_TIPE da API): LAMBDA = lambda-email, DEFAULT = SMTP direto, NONE = só registra no log (use nos testes de carga)"
+
+  validation {
+    condition     = contains(["LAMBDA", "DEFAULT", "NONE"], var.mailType)
+    error_message = "mailType deve ser LAMBDA, DEFAULT ou NONE."
+  }
+}
 variable "accessKeyId" {
   type        = string
   sensitive   = true
