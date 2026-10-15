@@ -1,16 +1,16 @@
 locals {
 
-  nr_app            = "appName = 'fiap-api'"
-  nr_api            = "appName = 'fiap-api' AND transactionType = 'Web' AND request.uri NOT LIKE '/actuator%'"
+  nr_app            = "appName = 'fiap-api-${var.deploymentEnvironment}'"
+  nr_api            = "${local.nr_app} AND transactionType = 'Web' AND request.uri NOT LIKE '/actuator%'"
   nr_service_orders = "${local.nr_api} AND request.uri LIKE '/service-orders%'"
 
   nr_containers = "clusterName = '${aws_eks_cluster.main.name}' AND namespaceName = 'prod' AND containerName = 'api-container'"
 
   nr_logs = "cluster_name = '${aws_eks_cluster.main.name}' AND namespace_name = 'prod' AND container_name = 'api-container'"
 
-  nr_service_order_alert_name = "Falhas no processamento de ordens de serviço"
+  nr_service_order_alert_name = "Falhas no processamento de ordens de serviço (${var.deploymentEnvironment})"
 
-  nr_health_monitor_name = "fiap-api health"
+  nr_health_monitor_name = "fiap-api-${var.deploymentEnvironment} health"
   nr_api_host            = try(data.kubernetes_service.api.status[0].load_balancer[0].ingress[0].hostname, "")
   nr_synthetic           = "monitorName = '${local.nr_health_monitor_name}'"
 }
@@ -29,7 +29,7 @@ resource "newrelic_synthetics_monitor" "api_health" {
 
 # Alerta sem notificação: o incidente fica só no New Relic (Alerts > Issues) e no dashboard
 resource "newrelic_alert_policy" "fiap_api" {
-  name                = "FIAP API"
+  name                = "FIAP API (${var.deploymentEnvironment})"
   incident_preference = "PER_CONDITION"
 }
 
@@ -59,7 +59,7 @@ resource "newrelic_nrql_alert_condition" "service_order_failures" {
 }
 
 resource "newrelic_one_dashboard" "fiap_api" {
-  name        = "FIAP API"
+  name        = "FIAP API (${var.deploymentEnvironment})"
   permissions = "public_read_only"
 
   page {
@@ -147,13 +147,13 @@ resource "newrelic_one_dashboard" "fiap_api" {
     name = "Ordens de serviço"
 
     widget_stacked_bar {
-      title  = "Volume de ordens de serviço por situação (últimos 10 minutos)"
+      title  = "Volume diário de ordens de serviço abertas"
       row    = 1
       column = 1
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT count(*) FROM ServiceOrderStatusChanged FACET newStatus SINCE 10 minutes ago TIMESERIES 1 minute"
+        query = "SELECT count(*) FROM ServiceOrderStatusChanged WHERE newStatus = 'RECEIVED' SINCE 7 days ago TIMESERIES 1 day"
       }
     }
 

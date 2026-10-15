@@ -29,7 +29,8 @@ spec:
     spec:
       containers:
       - name: api-container
-        image: timbeck97/tc-fiap:latest
+        image: ${var.apiImage}
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:
