@@ -33,6 +33,16 @@ variable "jwtSecret" {
   sensitive   = true
   description = "Chave de assinatura do JWT (mínimo 256 bits)"
 }
+variable "jwtIssuer" {
+  type        = string
+  default     = ""
+  description = "Issuer dos tokens RS256. Vazio usa o bucket de JWKS do fiap-lambda (fiap-jwt-jwks-<conta>), calculado em data.tf"
+}
+variable "jwtAudience" {
+  type        = string
+  default     = "fiap-api"
+  description = "Claim aud exigida nos tokens RS256 (mesmo jwt_audience do fiap-lambda)"
+}
 variable "clusterName" {
   type        = string
   default     = "my-cluster"
@@ -48,32 +58,56 @@ variable "clusterLogTypes" {
   default     = ["api", "audit", "authenticator"]
   description = "Logs do control plane. controllerManager e scheduler ficam de fora por serem os mais verbosos"
 }
-variable "mailHost" {
-  type        = string
-  default     = "smtp.gmail.com"
-  description = "Host SMTP usado para as notificações por e-mail"
-}
-variable "mailPort" {
-  type        = number
-  default     = 587
-  description = "Porta SMTP. 587 = STARTTLS (a porta 25 é bloqueada na saída da AWS)"
-}
-variable "mailUsername" {
-  type        = string
-  description = "Conta que autentica no SMTP. No Gmail, o endereço completo (ex: oficina@gmail.com)"
-}
-variable "mailPassword" {
-  type        = string
-  sensitive   = true
-  description = "Senha SMTP. No Gmail, a App Password de 16 caracteres (exige verificação em duas etapas)"
-}
-variable "notificationsEmailFrom" {
-  type        = string
-  default     = ""
-  description = "Remetente dos e-mails. Vazio usa o mailUsername, que é o que o Gmail exige; preencha apenas para um alias verificado na conta"
-}
 
 variable "appPublicUrl" {
   type        = string
   default     = ""
+  description = "Base dos links dos e-mails. No CI, o segundo apply passa o output api_public_url"
+}
+
+variable "mailType" {
+  type        = string
+  default     = "LAMBDA"
+  description = "Envio dos e-mails de status da OS (MAIL_TIPE da API): LAMBDA = lambda-email, DEFAULT = SMTP direto, NONE = só registra no log (use nos testes de carga)"
+
+  validation {
+    condition     = contains(["LAMBDA", "DEFAULT", "NONE"], var.mailType)
+    error_message = "mailType deve ser LAMBDA, DEFAULT ou NONE."
+  }
+}
+variable "accessKeyId" {
+  type        = string
+  sensitive   = true
+  description = "Credencial do Learner Lab que a API usa para invocar a lambda-email"
+}
+variable "secretAccessKey" {
+  type      = string
+  sensitive = true
+}
+variable "sessionToken" {
+  type      = string
+  sensitive = true
+}
+
+variable "newrelic_license_key" {
+  type        = string
+  sensitive   = true
+  description = "License key (ingest) da conta New Relic usada pelo nri-bundle"
+}
+
+variable "newrelic_account_id" {
+  type        = number
+  description = "ID da conta New Relic onde o dashboard é criado"
+}
+
+variable "newrelic_api_key" {
+  type        = string
+  sensitive   = true
+  description = "User API key (NRAK-...) usada pelo provider newrelic para criar o dashboard"
+}
+
+variable "newrelic_region" {
+  type        = string
+  default     = "US"
+  description = "Região da conta New Relic (US ou EU)"
 }

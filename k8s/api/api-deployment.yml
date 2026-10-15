@@ -18,7 +18,7 @@ spec:
         kubernetes.io/arch: amd64
       containers:
       - name: api-container
-        image: wzzylima/tc-fiap:latest
+        image: timbeck97/tc-fiap:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080

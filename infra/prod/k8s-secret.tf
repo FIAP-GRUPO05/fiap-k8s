@@ -12,16 +12,14 @@ stringData:
   SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres-service:5432/${var.postgresDb}"
   SPRING_DATASOURCE_USERNAME: "${var.postgresUser}"
   SPRING_DATASOURCE_PASSWORD: "${var.postgresPassword}"
+  MAIL_TIPE: "${var.mailType}"
   JWT_SECRET: "${var.jwtSecret}"
-  MAIL_HOST: "${var.mailHost}"
-  MAIL_PORT: "${var.mailPort}"
-  MAIL_USERNAME: "${var.mailUsername}"
-  MAIL_PASSWORD: "${var.mailPassword}"
-  MAIL_SMTP_AUTH: "true"
-  MAIL_SMTP_STARTTLS: "true"
-  NOTIFICATIONS_EMAIL_ENABLED: "true"
-  NOTIFICATIONS_EMAIL_FROM: "${var.notificationsEmailFrom != "" ? var.notificationsEmailFrom : var.mailUsername}"
+  JWT_ISSUER: "${local.jwt_issuer}"
+  JWT_AUDIENCE: "${var.jwtAudience}"
   APP_PUBLIC_URL: "${var.appPublicUrl}"
-
+  AWS_ACCESS_KEY_ID: "${var.accessKeyId}"
+  AWS_SECRET_ACCESS_KEY : "${var.secretAccessKey}"
+  AWS_SESSION_TOKEN : "${var.sessionToken}"
+  AWS_REGION : "us-east-1"
 YAML
 }

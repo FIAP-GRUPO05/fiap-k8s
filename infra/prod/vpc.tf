@@ -16,12 +16,13 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                     = "public-subnet"
-    "kubernetes.io/role/elb" = "1"
+    Name                              = "public-subnet"
+    "kubernetes.io/role/elb"          = "1"
+    "kubernetes.io/role/internal-elb" = "1"
   }
 }
 
-# Subnet Privada
+
 resource "aws_subnet" "private" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.2.0/24"
@@ -29,7 +30,8 @@ resource "aws_subnet" "private" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "private-subnet"
+    Name                              = "private-subnet"
+    "kubernetes.io/role/internal-elb" = "1"
   }
 }
 

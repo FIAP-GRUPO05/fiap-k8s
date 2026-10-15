@@ -3,12 +3,20 @@ postgresUser     = "oficina"
 postgresPassword = "troque-esta-senha"
 jwtSecret        = "chave-secreta-com-no-minimo-256-bits-de-comprimento"
 
-mailHost               = "smtp.gmail.com"
-mailPort               = 587
-mailUsername           = "sua-conta@gmail.com"
-mailPassword           = "app-password-de-16-caracteres"
-# notificationsEmailFrom = "alias@gmail.com"   # opcional: vazio usa o mailUsername
+# accessKeyId, secretAccessKey e sessionToken vêm de TF_VAR_* (ver comandos-terraform.md)
 
-# Preencha na SEGUNDA execucao, com o valor do output api_public_url.
-# Deixar vazio faz os links do e-mail apontarem para localhost.
-# appPublicUrl = "http://a1b2c3d4.us-east-1.elb.amazonaws.com:8080"
+
+jwtAudience = "fiap-api"
+
+# License key (ingest) da conta New Relic
+newrelic_license_key = "sua-license-key-new-relic"
+
+# Conta e User API key (NRAK-...) usadas pelo provider newrelic para criar o
+# dashboard. A license key acima só envia dados e não serve aqui.
+newrelic_account_id = 1234567
+newrelic_api_key    = "NRAK-sua-user-api-key"
+# newrelic_region   = "US"
+
+# Envio dos e-mails de status da OS: LAMBDA (padrão), DEFAULT (SMTP) ou NONE (só log,
+# para testes de carga não estourarem o limite de envios do Gmail)
+# mailType = "NONE"
