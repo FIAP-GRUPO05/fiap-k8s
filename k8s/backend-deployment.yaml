@@ -22,10 +22,24 @@ spec:
         app: api
         version: v1
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: api
         image: timbeck97/tc-fiap:latest
         imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - name: java-tmp
+          mountPath: /tmp
         ports:
         - name: http
           containerPort: 8080
@@ -80,6 +94,9 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 2
+      volumes:
+      - name: java-tmp
+        emptyDir: {}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
