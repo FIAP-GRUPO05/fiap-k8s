@@ -78,6 +78,12 @@ jobs:
         run: |
           terraform -chdir=infra/prod init -backend=false -input=false
           terraform -chdir=infra/prod validate
+      - name: 04a - Validar bootstrap AWS sem backend remoto
+        shell: bash
+        run: |
+          terraform -chdir=infra/bootstrap fmt -check -recursive
+          terraform -chdir=infra/bootstrap init -backend=false -input=false
+          terraform -chdir=infra/bootstrap validate
       - name: 05 - Segurança da infraestrutura
         if: github.event_name == 'pull_request'
         uses: aquasecurity/trivy-action@v0.36.0
