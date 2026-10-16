@@ -11,15 +11,27 @@ da organização e dos repositórios fazem parte da política de confiança.
 ## Pré-requisitos
 
 1. Habilitar MFA na conta root e configurar uma identidade administrativa do time.
+   O script interrompe a execução se o perfil ainda representar a identidade root.
 2. Criar o bucket `fiap-tfstate-456687462806` em `sa-east-1`, com versionamento,
    criptografia padrão e bloqueio integral de acesso público, usando o script
    abaixo no diretório `infra/bootstrap`.
 3. Usar uma identidade administrativa autenticada na conta `456687462806`.
+   Para uma sessão criada por `aws login`, configure um perfil de processo para o
+   Terraform, que obtém credenciais temporárias do AWS CLI sem salvar chaves:
+
+```powershell
+aws configure set credential_process "aws configure export-credentials --profile <perfil-admin> --format process" --profile fiap-team-terraform
+aws configure set region sa-east-1 --profile fiap-team-terraform
+aws sts get-caller-identity --profile fiap-team-terraform
+```
+
+O ARN acima deve representar a identidade administrativa, nunca `:root`.
 
 ```powershell
 Set-Location infra/bootstrap
-./create-state-bucket.ps1 -Profile fiap-team
+./create-state-bucket.ps1 -Profile fiap-team-terraform
 Set-Location ../..
+$env:AWS_PROFILE = 'fiap-team-terraform'
 terraform -chdir=infra/bootstrap init -input=false -backend-config=bucket=fiap-tfstate-456687462806 -backend-config=key=fiap/bootstrap.tfstate -backend-config=region=sa-east-1 -backend-config=encrypt=true -backend-config=use_lockfile=true
 terraform -chdir=infra/bootstrap plan -input=false
 terraform -chdir=infra/bootstrap apply -input=false

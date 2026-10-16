@@ -14,6 +14,14 @@ if ($LASTEXITCODE -ne 0 -or $actualAccount.Trim() -ne $accountId) {
     throw "O perfil $Profile nao esta autenticado na conta $accountId."
 }
 
+$actualArn = aws sts get-caller-identity --profile $Profile --query Arn --output text
+if ($LASTEXITCODE -ne 0) {
+    throw "Nao foi possivel verificar a identidade do perfil $Profile."
+}
+if ($actualArn.Trim().EndsWith(':root')) {
+    throw 'Nao execute o bootstrap com a identidade root. Configure MFA e uma identidade administrativa do time.'
+}
+
 $existing = aws s3api list-buckets --profile $Profile --query "Buckets[?Name=='$bucket'].Name" --output text
 if ($LASTEXITCODE -ne 0) {
     throw 'Nao foi possivel listar os buckets da conta.'
