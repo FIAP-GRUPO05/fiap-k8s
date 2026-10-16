@@ -1,5 +1,6 @@
 param(
-    [string]$Profile = 'fiap-team'
+    [string]$Profile = 'fiap-team',
+    [switch]$AllowRootBootstrap
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,7 +20,16 @@ if ($LASTEXITCODE -ne 0) {
     throw "Nao foi possivel verificar a identidade do perfil $Profile."
 }
 if ($actualArn.Trim().EndsWith(':root')) {
-    throw 'Nao execute o bootstrap com a identidade root. Configure MFA e uma identidade administrativa do time.'
+    if (-not $AllowRootBootstrap) {
+        throw 'Nao execute o bootstrap com a identidade root sem -AllowRootBootstrap.'
+    }
+
+    $rootMfaEnabled = aws iam get-account-summary --profile $Profile --query SummaryMap.AccountMFAEnabled --output text
+    if ($LASTEXITCODE -ne 0 -or $rootMfaEnabled.Trim() -ne '1') {
+        throw 'O MFA da identidade root precisa estar ativo antes do bootstrap inicial.'
+    }
+
+    Write-Warning 'Bootstrap inicial com identidade root. Use uma identidade administrativa ou OIDC nas proximas operacoes.'
 }
 
 $existing = aws s3api list-buckets --profile $Profile --query "Buckets[?Name=='$bucket'].Name" --output text

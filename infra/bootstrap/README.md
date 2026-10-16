@@ -10,8 +10,9 @@ da organização e dos repositórios fazem parte da política de confiança.
 
 ## Pré-requisitos
 
-1. Habilitar MFA na conta root e configurar uma identidade administrativa do time.
-   O script interrompe a execução se o perfil ainda representar a identidade root.
+1. Habilitar MFA na conta root. Preferir uma identidade administrativa do time.
+   Para o bootstrap inicial, a identidade root pode ser usada somente com o
+   parâmetro explícito `-AllowRootBootstrap`; o script confere se o MFA está ativo.
 2. Criar o bucket `fiap-tfstate-456687462806` em `sa-east-1`, com versionamento,
    criptografia padrão e bloqueio integral de acesso público, usando o script
    abaixo no diretório `infra/bootstrap`.
@@ -25,20 +26,29 @@ aws configure set region sa-east-1 --profile fiap-team-terraform
 aws sts get-caller-identity --profile fiap-team-terraform
 ```
 
-O ARN acima deve representar a identidade administrativa, nunca `:root`.
+O ARN acima deve representar a identidade administrativa. Se ela ainda não
+estiver disponível, use temporariamente o perfil `fiap-team-terraform`, que
+obtém uma sessão curta do login root, somente para este bootstrap inicial.
 
 ```powershell
 Set-Location infra/bootstrap
-./create-state-bucket.ps1 -Profile fiap-team-terraform
-Set-Location ../..
-$env:AWS_PROFILE = 'fiap-team-terraform'
-terraform -chdir=infra/bootstrap init -input=false -backend-config=bucket=fiap-tfstate-456687462806 -backend-config=key=fiap/bootstrap.tfstate -backend-config=region=sa-east-1 -backend-config=encrypt=true -backend-config=use_lockfile=true
-terraform -chdir=infra/bootstrap plan -input=false
-terraform -chdir=infra/bootstrap apply -input=false
+./create-state-bucket.ps1 -Profile fiap-team -AllowRootBootstrap
+@'
+bucket       = "fiap-tfstate-456687462806"
+key          = "fiap/bootstrap.tfstate"
+region       = "sa-east-1"
+profile      = "fiap-team-terraform"
+encrypt      = true
+use_lockfile = true
+'@ | Set-Content backend.local.hcl
+terraform init -input=false -backend-config backend.local.hcl
+terraform plan -input=false -var aws_profile=fiap-team-terraform -out bootstrap.tfplan
+terraform apply -input=false bootstrap.tfplan
 ```
 
 O `plan` deve ser revisado antes do `apply`. O estado do Terraform fica no S3
 com bloqueio por arquivo `.tflock`; nenhum segredo AWS é salvo no repositório.
+O arquivo `backend.local.hcl` é ignorado pelo Git.
 
 O deploy real terá roles separadas para homologação e produção, com permissões
 específicas para cada serviço. A role de verificação não será ampliada para

@@ -13,6 +13,7 @@ terraform {
 
 provider "aws" {
   region              = "sa-east-1"
+  profile             = var.aws_profile
   allowed_account_ids = ["456687462806"]
 
   default_tags {
@@ -21,6 +22,12 @@ provider "aws" {
       ManagedBy = "terraform"
     }
   }
+}
+
+variable "aws_profile" {
+  type        = string
+  default     = null
+  description = "Perfil AWS local para o bootstrap; deixe vazio para credenciais OIDC do CI."
 }
 
 locals {
