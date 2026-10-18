@@ -3,6 +3,10 @@
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+!platform/shared.auto.tfvars
+__pycache__/
+platform/bootstrap-trust.json
+platform/bootstrap-user-policy.json
 crash.log
 override.tf
 override.tf.json
