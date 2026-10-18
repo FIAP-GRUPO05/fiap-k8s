@@ -12,18 +12,16 @@ que as validacoes comecem automaticamente.
    workflow nao depende de webhooks; desative-os se o formulario permitir.
 3. Instale o aplicativo na organizacao selecionando somente
    `fiap-application`, `fiap-lambda`, `fiap-k8s` e `fiap-database`.
-4. Para voltar as configuracoes do App, abra **FIAP-GRUPO05 > Settings >
-   Developer settings > GitHub Apps** e clique em **Edit** ao lado do App.
-   Na pagina de configuracao, localize **Client ID** e copie esse valor. Ele
-   nao e o **App ID** e nao e o **Client secret**; estes dois nao sao usados
-   pelo workflow.
+4. Na pagina de configuracao do App, copie o **Client ID** exibido no topo.
+   A action `actions/create-github-app-token@v3` recomenda a entrada `client-id`.
+   O **Client secret** nao substitui a chave privada usada para assinar o JWT.
 5. No menu lateral dessa mesma pagina, abra **Credentials > Key pairs > New
    key**. O GitHub baixara um arquivo `.pem`. Em algumas versoes da interface,
    a secao aparece como **Private keys > Generate a private key**. Guarde o
    arquivo fora dos repositorios e nao envie seu conteudo por chat.
 6. Em **FIAP-GRUPO05 > Settings > Secrets and variables > Actions > Variables >
-   New organization variable**, use o nome `FIAP_PROMOTION_APP_CLIENT_ID` e
-   cole no campo **Value** o Client ID copiado no passo 4. Selecione acesso
+   New organization variable**, use o nome `FIAP_PROMOTION_APP_CLIENT_ID` e cole no
+   campo **Value** o Client ID copiado no passo 4. Selecione acesso
    apenas aos quatro repositorios.
 7. Na aba **Secrets > New organization secret**, use o nome
    `FIAP_PROMOTION_APP_PRIVATE_KEY` e cole no campo **Secret** o conteudo
@@ -34,6 +32,7 @@ que as validacoes comecem automaticamente.
    aprovacao adicional. Repita a verificacao ao promover para `release/vX.Y.Z`
    e `prod`.
 
-Enquanto a variavel nao existir, o workflow continua com `GITHUB_TOKEN` e
+O workflow tambem aceita `FIAP_PROMOTION_APP_ID` como compatibilidade com uma
+configuracao anterior. Enquanto nenhuma dessas variaveis existir, continua com `GITHUB_TOKEN` e
 exibe um aviso. Nessa condicao, o GitHub pode exigir aprovacao manual da
 execucao criada pelo PR automatico.
