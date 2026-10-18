@@ -9,11 +9,11 @@ resource "aws_security_group" "sg" {
 
 resource "aws_vpc_security_group_ingress_rule" "allow_postgres" {
   security_group_id = aws_security_group.sg.id
-  description       = "Postgres"
+  description       = "Postgres somente dentro da VPC"
   from_port         = 5432
   to_port           = 5432
   ip_protocol       = "tcp"
-  cidr_ipv4         = "0.0.0.0/0"
+  cidr_ipv4         = aws_vpc.main.cidr_block
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_internal" {
@@ -54,7 +54,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_metrics_server" {
 
 resource "aws_vpc_security_group_egress_rule" "allow_all" {
   security_group_id = aws_security_group.sg.id
-  description       = "All"
+  description       = "Trafego interno da VPC"
   ip_protocol       = "-1"
-  cidr_ipv4         = "0.0.0.0/0"
+  cidr_ipv4         = aws_vpc.main.cidr_block
 }
