@@ -35,6 +35,11 @@ resource "aws_iam_role_policy" "codebuild_deploy" {
       },
       {
         Effect   = "Allow"
+        Action   = ["lambda:InvokeFunction"]
+        Resource = aws_lambda_function.observability_probe.arn
+      },
+      {
+        Effect   = "Allow"
         Action   = ["eks:DescribeCluster"]
         Resource = aws_eks_cluster.main.arn
       },
@@ -141,6 +146,10 @@ resource "aws_codebuild_project" "eks_deploy" {
     image                       = "aws/codebuild/standard:7.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
+    environment_variable {
+      name  = "VPC_CIDR"
+      value = var.vpc_cidr
+    }
   }
 
   source {

@@ -47,7 +47,8 @@ resource "aws_iam_role_policy" "platform_bootstrap" {
     Statement = concat(local.runner_network_permissions, [
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.platform_bootstrap.arn}:*" },
       { Effect = "Allow", Action = ["s3:GetObject"], Resource = "arn:aws:s3:::fiap-tfstate-456687462806/${aws_s3_object.platform_bootstrap_script.key}" },
-      { Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = aws_secretsmanager_secret.newrelic.arn }
+      { Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = aws_secretsmanager_secret.newrelic.arn },
+      { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = aws_lambda_function.observability_probe.arn }
     ])
   })
 }
@@ -78,6 +79,14 @@ resource "aws_codebuild_project" "platform_bootstrap" {
     image                       = "aws/codebuild/standard:7.0"
     type                        = "LINUX_CONTAINER"
     image_pull_credentials_type = "CODEBUILD"
+    environment_variable {
+      name  = "CLUSTER_VPC_ID"
+      value = aws_vpc.main.id
+    }
+    environment_variable {
+      name  = "CLUSTER_REGION"
+      value = var.region
+    }
     environment_variable {
       name  = "NEW_RELIC_CHART_VERSION"
       value = "8.0.34"

@@ -10,8 +10,9 @@ Esta raiz gerencia o EKS `fiap-shared` na conta TWM `456687462806`, regiao
 - Um NAT compartilhado e um endpoint privado de Secrets Manager em uma zona.
 - RDS privado em `fiap-database/infra/managed`; imagem em ECR em
   `fiap-application/infra/registry`.
-- Somente `prod` solicita um LoadBalancer publico. Os Services de desenvolvimento
-  e homologacao ficam internos. Isso evita manter tres balanceadores pagos.
+- Um unico ALB privado atende os tres namespaces por caminhos separados.
+  Tres APIs HTTPS do API Gateway chegam a ele por um VPC Link compartilhado.
+  Nenhum Service Kubernetes fica exposto diretamente na internet.
 
 EKS, EC2, NAT, endpoint, RDS, armazenamento e balanceador geram custos enquanto
 provisionados. Compartilhar cluster/banco e usar um NAT reduz o custo fixo,
@@ -39,7 +40,10 @@ instalar CRDs, webhooks e agentes.
 
 `fiap-eks-deploy` recebe `IMAGE_URI` e `DEPLOY_NAMESPACE`, aplica Deployment,
 Secret, Service e HPA, aguarda o rollout e verifica `/actuator/health`, incluindo
-o banco. Seu acesso Kubernetes esta restrito aos tres namespaces. O Deployment
+o banco, a injecao do agente e o recebimento real de transacoes no New Relic.
+O probe privado `fiap-observability-probe` consulta apenas contagens agregadas;
+o executor de deploy nao recebe a API key do New Relic.
+Seu acesso Kubernetes esta restrito aos tres namespaces. O Deployment
 usa `envFrom.secretRef`; senhas nao sao copiadas para seus campos de ambiente.
 
 Os executores CodeBuild so cobram durante a execucao. Usam a API EKS privada,

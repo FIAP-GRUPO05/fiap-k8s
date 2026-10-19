@@ -5,4 +5,6 @@
 **/terraform.tfvars
 **/*.auto.tfvars
 **/backend.local.hcl
+__pycache__/
+*.pyc
 

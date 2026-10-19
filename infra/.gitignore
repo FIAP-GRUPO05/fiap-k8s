@@ -1,10 +1,12 @@
 .terraform/
 *.tfstate
 *.tfstate.*
+*.tfplan
 *.tfvars
 !*.tfvars.example
 !platform/shared.auto.tfvars
 __pycache__/
+*.zip
 platform/bootstrap-trust.json
 platform/bootstrap-user-policy.json
 crash.log

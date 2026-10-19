@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 import boto3
 
 def run(*args, document=None):
@@ -15,8 +16,15 @@ for environment in ("develop", "homol", "prod"):
     apply({"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": environment,
         "labels": {"fiap/environment": environment}}})
 run("kubectl", "get", "nodes")
+run("helm", "upgrade", "--install", "aws-load-balancer-controller", "aws-load-balancer-controller",
+    "--repo", "https://aws.github.io/eks-charts", "--version", "3.6.0", "--namespace", "kube-system",
+    "--set", "clusterName=fiap-shared", "--set", f"region={os.environ['CLUSTER_REGION']}",
+    "--set", f"vpcId={os.environ['CLUSTER_VPC_ID']}",
+    "--set", "serviceAccount.name=aws-load-balancer-controller", "--set", "serviceAccount.create=true",
+    "--set", "enableShield=false", "--set", "enableWaf=false", "--set", "enableWafv2=false",
+    "--wait", "--timeout", "5m")
 if os.environ.get("BOOTSTRAP_ONLY", "false").lower() == "true":
-    print("Namespaces ready; observability credentials will be synchronized by GitHub")
+    print("Namespaces and ingress controller ready")
     raise SystemExit(0)
 
 credentials = json.loads(boto3.client("secretsmanager").get_secret_value(SecretId="fiap/shared/newrelic")["SecretString"])
@@ -50,5 +58,17 @@ for environment in ("develop", "homol", "prod"):
             "namespaceLabelSelector": {"matchLabels": {"kubernetes.io/metadata.name": environment}},
         }})
 run("kubectl", "get", "pods", "-n", "newrelic")
+probe = boto3.client("lambda")
+for attempt in range(12):
+    response = probe.invoke(FunctionName="fiap-observability-probe", Payload=b'{"require_apm":false}')
+    result = json.loads(response["Payload"].read())
+    if response.get("FunctionError"):
+        raise RuntimeError("New Relic verification failed; inspect the observability probe logs")
+    if result.get("healthy"):
+        print("Real New Relic cluster telemetry verified")
+        break
+    time.sleep(15)
+else:
+    raise RuntimeError("New Relic did not receive cluster telemetry")
 print("New Relic metrics, events, logs and Java instrumentation installed")
 
