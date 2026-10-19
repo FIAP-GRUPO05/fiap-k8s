@@ -129,11 +129,41 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'prod'
         run: terraform -chdir=infra/platform validate
 
-  configure-observability:
-    name: Configure observability
+  deploy-platform:
+    name: Deploy shared platform
     needs: [route, verify]
     if: >-
+      github.event_name == 'push' && !github.event.created && github.ref_name == 'prod' &&
+      needs.verify.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Autenticar para Terraform da plataforma compartilhada
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: sa-east-1
+          role-to-assume: arn:aws:iam::456687462806:role/fiap-gh-terraform-fiap-k8s
+          allowed-account-ids: '456687462806'
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Aplicar EKS, rede e executores privados
+        run: |
+          terraform -chdir=infra/platform init -backend-config=backend.hcl -input=false
+          terraform -chdir=infra/platform plan -input=false -out=platform.tfplan
+          terraform -chdir=infra/platform apply -input=false -auto-approve platform.tfplan
+
+  configure-observability:
+    name: Configure observability
+    needs: [route, verify, deploy-platform]
+    if: >-
       always() && needs.route.result == 'success' &&
+      (needs.deploy-platform.result == 'success' || needs.deploy-platform.result == 'skipped') &&
       (needs.verify.result == 'success' || github.event_name == 'workflow_dispatch') &&
       (github.event_name == 'workflow_dispatch' ||
        github.event_name == 'push' && (github.ref_name == 'develop' ||
