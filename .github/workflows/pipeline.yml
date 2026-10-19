@@ -1,0 +1,278 @@
+name: Phase 3 Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feature/**', 'rollback/**', 'rolback/**', develop, 'release/**', prod]
+  pull_request:
+    branches: [develop, 'release/**', prod, main]
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: pipeline-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  route:
+    name: Route
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: 00 - Validar a origem e o destino do PR
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        shell: bash
+        run: |
+          case "$BASE_BRANCH:$HEAD_BRANCH" in
+            develop:feature/*|release/*:develop|release/*:rollback/*|release/*:rolback/*|prod:release/*|main:prod) ;;
+            *) echo "::error::Rota proibida: $HEAD_BRANCH → $BASE_BRANCH. Use feature/* → develop → release/vX.Y.Z → prod → main; rollback/* → release/vX.Y.Z."; exit 1 ;;
+          esac
+          if [[ "$BASE_BRANCH" == release/* && ! "$BASE_BRANCH" =~ ^release/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo '::error::A release deve ter formato release/vX.Y.Z'; exit 1
+          fi
+          if [[ "$HEAD_BRANCH" == release/* && ! "$HEAD_BRANCH" =~ ^release/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo '::error::A release deve ter formato release/vX.Y.Z'; exit 1
+          fi
+      - name: 00 - Validar o nome da branch enviada
+        if: github.event_name == 'push'
+        env:
+          SOURCE_BRANCH: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if [[ ! "$SOURCE_BRANCH" =~ ^(feature|rollback|rolback)/[a-z0-9][a-z0-9._/-]*$ &&
+                "$SOURCE_BRANCH" != develop && "$SOURCE_BRANCH" != prod &&
+                ! "$SOURCE_BRANCH" =~ ^release/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo '::error::Use feature/<descricao>, rollback/<descricao>, develop, release/vX.Y.Z ou prod.'; exit 1
+          fi
+      - name: 00 - Explicar a promoção simples para main
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        run: echo 'prod → main é somente um PR com merge manual; nenhuma esteira de build/deploy é executada.'
+
+  verify:
+    name: Verify
+    needs: route
+    if: >-
+      github.event_name == 'push' &&
+      (startsWith(github.ref_name, 'feature/') || !github.event.created &&
+       (github.ref_name == 'develop' || startsWith(github.ref_name, 'release/') || github.ref_name == 'prod')) ||
+      github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'main' &&
+      !startsWith(github.event.pull_request.head.ref, 'rollback/') &&
+      !startsWith(github.event.pull_request.head.ref, 'rolback/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: 01 - Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Validar rotas de promocao e SemVer
+        run: python -m unittest discover -s .github/scripts -p 'test_*.py' -v
+      - name: 01a - Autenticar na AWS TWM por OIDC
+        if: github.event_name == 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: sa-east-1
+          role-to-assume: arn:aws:iam::456687462806:role/fiap-gh-preflight-fiap-k8s
+          allowed-account-ids: '456687462806'
+      - name: 01b - Confirmar identidade AWS
+        if: github.event_name == 'pull_request'
+        run: aws sts get-caller-identity --query Arn --output text
+      - name: 02 - Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: 03 - Formatação Terraform
+        run: terraform -chdir=infra/platform fmt -check -recursive
+      - name: 04 - Build Terraform sem backend remoto
+        shell: bash
+        run: |
+          terraform -chdir=infra/platform init -backend=false -input=false
+          terraform -chdir=infra/platform validate
+      - name: 04a - Validar bootstrap AWS sem backend remoto
+        shell: bash
+        run: |
+          terraform -chdir=infra/bootstrap fmt -check -recursive
+          terraform -chdir=infra/bootstrap init -backend=false -input=false
+          terraform -chdir=infra/bootstrap validate
+      - name: Validar dashboards e alertas
+        run: |
+          terraform -chdir=infra/observability fmt -check -recursive
+          terraform -chdir=infra/observability init -backend=false -input=false
+          terraform -chdir=infra/observability validate
+      - name: 05 - Segurança da infraestrutura
+        if: github.event_name == 'pull_request' || github.ref_name == 'develop' || startsWith(github.ref_name, 'release/') || github.ref_name == 'prod'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+      - name: 06 - Conectividade externa real
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'develop'
+        env:
+          FIAP_RUNTIME_CONFIG: ${{ vars.FIAP_RUNTIME_CONFIG }}
+          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: python .github/scripts/verify_external.py
+      - name: 06a - Instrumentação New Relic presente
+        if: github.event_name == 'pull_request' || github.ref_name == 'develop' || startsWith(github.ref_name, 'release/') || github.ref_name == 'prod'
+        run: |
+          grep -q 'NEW_RELIC_CHART_VERSION' infra/platform/platform_bootstrap.tf
+          grep -q 'Instrumentation' infra/platform/scripts/bootstrap_platform.py
+
+      - name: 07 - Regressão da configuração
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'prod'
+        run: terraform -chdir=infra/platform validate
+
+  deploy-platform:
+    name: Deploy shared platform
+    needs: [route, verify]
+    if: >-
+      github.event_name == 'push' && !github.event.created && github.ref_name == 'prod' &&
+      needs.verify.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Autenticar para Terraform da plataforma compartilhada
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: sa-east-1
+          role-to-assume: arn:aws:iam::456687462806:role/fiap-gh-terraform-fiap-k8s
+          allowed-account-ids: '456687462806'
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Aplicar EKS, rede e executores privados
+        run: |
+          terraform -chdir=infra/platform init -backend-config=backend.hcl -input=false
+          terraform -chdir=infra/platform plan -input=false -out=platform.tfplan
+          terraform -chdir=infra/platform apply -input=false -auto-approve platform.tfplan
+
+  configure-observability:
+    name: Configure observability
+    needs: [route, verify, deploy-platform]
+    if: >-
+      always() && needs.route.result == 'success' &&
+      (needs.deploy-platform.result == 'success' || needs.deploy-platform.result == 'skipped') &&
+      (needs.verify.result == 'success' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'push' && (github.ref_name == 'develop' ||
+       startsWith(github.ref_name, 'release/') || github.ref_name == 'prod'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Autenticar na AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: sa-east-1
+          role-to-assume: arn:aws:iam::456687462806:role/fiap-gh-deploy-fiap-k8s
+          allowed-account-ids: '456687462806'
+      - name: Sincronizar credenciais do New Relic
+        env:
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+          NEW_RELIC_API_KEY: ${{ secrets.NEW_RELIC_API_KEY }}
+          NEW_RELIC_ACCOUNT_ID: ${{ secrets.NEW_RELIC_ACCOUNT_ID }}
+        run: python .github/scripts/sync_newrelic_secret.py
+      - name: Instalar e validar observabilidade dentro da VPC
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_id=$(aws codebuild start-build --project-name fiap-platform-bootstrap --query build.id --output text)
+          python .github/scripts/wait_codebuild.py "$build_id"
+      - name: Terraform dos dashboards e alertas por ambiente
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Aplicar dashboards privados e alertas
+        env:
+          TF_VAR_account_id: ${{ secrets.NEW_RELIC_ACCOUNT_ID }}
+          TF_VAR_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
+        run: |
+          terraform -chdir=infra/observability init -input=false -backend-config=backend.hcl
+          terraform -chdir=infra/observability apply -auto-approve -input=false
+
+  propose:
+    name: Propose
+    needs: [route, verify]
+    if: >-
+      always() && github.event_name == 'push' &&
+      (startsWith(github.ref_name, 'feature/') || startsWith(github.ref_name, 'rollback/') || startsWith(github.ref_name, 'rolback/')) &&
+      needs.route.result == 'success' &&
+      (needs.verify.result == 'success' ||
+       (needs.verify.result == 'skipped' &&
+        (startsWith(github.ref_name, 'rollback/') || startsWith(github.ref_name, 'rolback/'))))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: 10 - Checkout da branch enviada
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: 10a - Criar token do GitHub App da organizacao
+        if: vars.FIAP_PROMOTION_APP_CLIENT_ID != '' || vars.FIAP_PROMOTION_APP_ID != ''
+        id: promotion-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.FIAP_PROMOTION_APP_CLIENT_ID || vars.FIAP_PROMOTION_APP_ID }}
+          private-key: ${{ secrets.FIAP_PROMOTION_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: 10b - Avisar sobre aprovacao manual da esteira
+        if: vars.FIAP_PROMOTION_APP_CLIENT_ID == '' && vars.FIAP_PROMOTION_APP_ID == ''
+        run: echo '::warning::Configure o GitHub App de promocao para que PRs gerados automaticamente iniciem a esteira sem aprovacao manual.'
+      - name: 11 - Abrir PR para develop ou release
+        env:
+          GH_TOKEN: ${{ steps.promotion-token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: python .github/scripts/flow.py promote
+
+  promote:
+    name: Promote
+    needs: [route, verify, configure-observability]
+    if: >-
+      always() && github.event_name == 'push' && !github.event.created &&
+      (github.ref_name == 'develop' || startsWith(github.ref_name, 'release/') || github.ref_name == 'prod') &&
+      needs.route.result == 'success' && needs.verify.result == 'success' && needs.configure-observability.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: 10 - Checkout do automador
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: ${{ github.ref_name }}
+      - name: 10a - Criar token do GitHub App da organizacao
+        if: vars.FIAP_PROMOTION_APP_CLIENT_ID != '' || vars.FIAP_PROMOTION_APP_ID != ''
+        id: promotion-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.FIAP_PROMOTION_APP_CLIENT_ID || vars.FIAP_PROMOTION_APP_ID }}
+          private-key: ${{ secrets.FIAP_PROMOTION_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: 10b - Avisar sobre aprovacao manual da esteira
+        if: vars.FIAP_PROMOTION_APP_CLIENT_ID == '' && vars.FIAP_PROMOTION_APP_ID == ''
+        run: echo '::warning::Configure o GitHub App de promocao para que PRs gerados automaticamente iniciem a esteira sem aprovacao manual.'
+      - name: 11 - Abrir PR da próxima etapa
+        env:
+          GH_TOKEN: ${{ steps.promotion-token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: python .github/scripts/flow.py promote
