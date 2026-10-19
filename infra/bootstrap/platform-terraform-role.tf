@@ -1,5 +1,5 @@
 locals {
-  platform_role_names        = ["fiap-shared-eks-cluster", "fiap-shared-eks-nodes", "fiap-aws-load-balancer-controller", "fiap-eks-deploy-runner", "fiap-platform-bootstrap", "fiap-observability-probe"]
+  platform_role_names        = ["fiap-shared-eks-cluster", "fiap-shared-eks-nodes", "fiap-aws-load-balancer-controller", "fiap-eks-deploy-runner", "fiap-platform-bootstrap", "fiap-observability-probe", "fiap-uptime-probe"]
   platform_network_resources = [for kind in ["vpc", "subnet", "internet-gateway", "route-table", "elastic-ip", "natgateway", "vpc-endpoint", "security-group", "security-group-rule", "network-interface"] : "arn:aws:ec2:sa-east-1:456687462806:${kind}/*"]
 }
 
@@ -90,12 +90,13 @@ resource "aws_iam_role_policy" "github_platform_terraform" {
         Effect = "Allow", Action = ["kms:CreateAlias", "kms:UpdateAlias", "kms:DeleteAlias"], Resource = ["arn:aws:kms:sa-east-1:456687462806:alias/fiap-*", "arn:aws:kms:sa-east-1:456687462806:key/*"]
       },
       { Effect = "Allow", Action = ["kms:ListAliases"], Resource = "*" },
-      { Effect = "Allow", Action = ["lambda:ListVersionsByFunction"], Resource = "arn:aws:lambda:sa-east-1:456687462806:function:fiap-observability-probe" },
+      { Effect = "Allow", Action = ["lambda:ListVersionsByFunction"], Resource = ["arn:aws:lambda:sa-east-1:456687462806:function:fiap-observability-probe", "arn:aws:lambda:sa-east-1:456687462806:function:fiap-uptime-probe"] },
       {
         Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:ListTagsForResource", "logs:TagResource", "logs:UntagResource", "logs:PutRetentionPolicy"], Resource = [
           "arn:aws:logs:sa-east-1:456687462806:log-group:/aws/eks/fiap-shared/*",
           "arn:aws:logs:sa-east-1:456687462806:log-group:/aws/codebuild/fiap-*",
-          "arn:aws:logs:sa-east-1:456687462806:log-group:/aws/lambda/fiap-observability-probe*"
+          "arn:aws:logs:sa-east-1:456687462806:log-group:/aws/lambda/fiap-observability-probe*",
+          "arn:aws:logs:sa-east-1:456687462806:log-group:/aws/lambda/fiap-uptime-probe*"
         ]
       },
       {
@@ -105,7 +106,10 @@ resource "aws_iam_role_policy" "github_platform_terraform" {
         Effect = "Allow", Action = ["secretsmanager:CreateSecret", "secretsmanager:DeleteSecret", "secretsmanager:DescribeSecret", "secretsmanager:GetResourcePolicy", "secretsmanager:UpdateSecret", "secretsmanager:TagResource", "secretsmanager:UntagResource", "secretsmanager:RestoreSecret"], Resource = "arn:aws:secretsmanager:sa-east-1:456687462806:secret:fiap/shared/newrelic-*"
       },
       {
-        Effect = "Allow", Action = ["lambda:CreateFunction", "lambda:DeleteFunction", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:GetFunctionCodeSigningConfig", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:ListTags", "lambda:TagResource", "lambda:UntagResource"], Resource = "arn:aws:lambda:sa-east-1:456687462806:function:fiap-observability-probe"
+        Effect = "Allow", Action = ["lambda:CreateFunction", "lambda:DeleteFunction", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:GetFunctionCodeSigningConfig", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:ListTags", "lambda:TagResource", "lambda:UntagResource", "lambda:AddPermission", "lambda:RemovePermission", "lambda:GetPolicy"], Resource = ["arn:aws:lambda:sa-east-1:456687462806:function:fiap-observability-probe", "arn:aws:lambda:sa-east-1:456687462806:function:fiap-uptime-probe"]
+      },
+      {
+        Effect = "Allow", Action = ["events:PutRule", "events:DescribeRule", "events:DeleteRule", "events:EnableRule", "events:DisableRule", "events:ListTagsForResource", "events:TagResource", "events:UntagResource", "events:PutTargets", "events:ListTargetsByRule", "events:RemoveTargets"], Resource = "arn:aws:events:sa-east-1:456687462806:rule/fiap-uptime-every-five-minutes"
       }
     ]
   })
