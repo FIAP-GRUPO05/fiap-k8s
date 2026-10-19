@@ -1,9 +1,9 @@
 # Bootstrap de identidade AWS para o CI/CD
 
-Esta configuração cria o provedor OIDC do GitHub e quatro roles de verificação,
-uma por repositório. Cada role aceita somente tokens de PR do repositório
-correspondente. As roles não possuem permissões sobre recursos AWS; o primeiro
-uso valida apenas o ID da conta via STS.
+Esta configuração cria o provedor OIDC do GitHub e funções separadas de
+verificação, deploy e Terraform. Cada função de PR aceita somente tokens do
+repositório correspondente e pode consultar STS e o probe agregado de telemetria.
+Ela não recebe segredos nem permissões para alterar a infraestrutura.
 
 A conta é fixada em `456687462806` e a região em `sa-east-1`. Os IDs imutáveis
 da organização e dos repositórios fazem parte da política de confiança.
@@ -50,6 +50,13 @@ O `plan` deve ser revisado antes do `apply`. O estado do Terraform fica no S3
 com bloqueio por arquivo `.tflock`; nenhum segredo AWS é salvo no repositório.
 O arquivo `backend.local.hcl` é ignorado pelo Git.
 
-O deploy real terá roles separadas para homologação e produção, com permissões
-específicas para cada serviço. A role de verificação não será ampliada para
-fazer deploy, pois também pode ser assumida durante a avaliação de um PR.
+As funções de deploy aceitam develop, release/v* e prod do repositório autorizado.
+Na Lambda, cada ambiente tem sua função de deploy. As funções Terraform de
+K8s, banco e Lambda aceitam exclusivamente prod, pois gerenciam infraestrutura
+compartilhada. A aplicação gerencia somente seu registro ECR e o deploy privado.
+Os planos foram executados com essas funções; as políticas Terraform passaram
+no AWS Access Analyzer. A confiança temporária usada para o teste local foi removida.
+
+O bootstrap IAM/OIDC continua administrativo e não é aplicado pelo workflow.
+As exceções bootstrap_feature_ref e bootstrap_lambda_feature_ref devem ficar null.
+Consulte [CI/CD e operação](../../docs/CI-CD.md) para a ordem de provisionamento.
