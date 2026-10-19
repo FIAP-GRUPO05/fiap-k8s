@@ -2,6 +2,8 @@ postgresDb       = "oficina_db"
 postgresUser     = "oficina"
 postgresPassword = "troque-esta-senha"
 jwtSecret        = "chave-secreta-com-no-minimo-256-bits-de-comprimento"
+apiImage         = "sua-conta/tc-fiap:develop"
+deploymentEnvironment = "develop"
 
 # accessKeyId, secretAccessKey e sessionToken vêm de TF_VAR_* (ver comandos-terraform.md)
 

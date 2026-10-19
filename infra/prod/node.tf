@@ -16,7 +16,7 @@ resource "aws_eks_node_group" "main" {
     max_unavailable = 1
   }
 
- 
+
   depends_on = [
     aws_eks_cluster.main,
     aws_eks_access_entry.access_entry_lab,
