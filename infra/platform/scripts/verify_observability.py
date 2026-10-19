@@ -42,6 +42,8 @@ def lambda_handler(event, context):
     require_business = event.get("require_business") is True
     business = count(f"SELECT count(*) AS samples FROM ServiceOrderStatusChanged WHERE appName = 'fiap-api-{environment}' SINCE 15 minutes ago") if require_business else 0
     logs = count(f"SELECT count(*) AS samples FROM Log WHERE namespace_name = '{environment}' AND correlationId IS NOT NULL SINCE 15 minutes ago") if require_business else 0
-    return {"healthy": cluster > 0 and (application > 0 or not require_apm) and (business > 0 and logs > 0 or not require_business),
+    require_uptime = event.get("require_uptime") is True
+    uptime = count(f"SELECT count(*) AS samples FROM FiapUptimeCheck WHERE environment = '{environment}' AND healthy = 1 SINCE 15 minutes ago") if require_uptime else 0
+    return {"healthy": cluster > 0 and (application > 0 or not require_apm) and (business > 0 and logs > 0 or not require_business) and (uptime > 0 or not require_uptime),
             "environment": environment, "cluster_samples": cluster, "application_samples": application,
-            "business_samples": business, "correlated_logs": logs}
+            "business_samples": business, "correlated_logs": logs, "uptime_samples": uptime}

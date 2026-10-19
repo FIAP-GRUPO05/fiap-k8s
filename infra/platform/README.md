@@ -63,3 +63,12 @@ O papel `fiap-gh-terraform-fiap-k8s` aceita apenas essa branch e gerencia os
 recursos FIAP; ele nao administra usuarios IAM nem o provedor OIDC. A instalacao
 de observabilidade acontece depois do apply e a promocao depende de ambos.
 Veja [o fluxo completo](../../docs/CI-CD.md).
+
+## Monitor HTTPS
+
+`fiap-uptime-probe` roda a cada cinco minutos via EventBridge, fora da VPC,
+e verifica health e JWKS das tres URLs publicas do API Gateway. Envia somente
+status, ambiente e duracao ao New Relic como `FiapUptimeCheck`. A chave de ingestao
+e carregada do Secrets Manager em memoria. Os dashboards incluem disponibilidade
+HTTPS e tempo da verificacao; alertas detectam falhas e 15 minutos sem sinal.
+O monitor nao substitui a regressao autenticada de negocio executada no deploy.
