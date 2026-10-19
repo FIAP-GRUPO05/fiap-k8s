@@ -30,7 +30,8 @@ resource "aws_iam_role_policy" "github_database_terraform" {
         Effect = "Allow", Action = ["s3:GetObject"], Resource = [
           "arn:aws:s3:::fiap-tfstate-456687462806/fiap/database-shared.tfstate",
           "arn:aws:s3:::fiap-tfstate-456687462806/fiap/database-shared.tfstate.tflock",
-          "arn:aws:s3:::fiap-tfstate-456687462806/fiap/platform-shared.tfstate"
+          "arn:aws:s3:::fiap-tfstate-456687462806/fiap/platform-shared.tfstate",
+          "arn:aws:s3:::fiap-tfstate-456687462806/fiap/bootstrap/bootstrap_databases.py"
         ]
       },
       {
@@ -42,6 +43,12 @@ resource "aws_iam_role_policy" "github_database_terraform" {
       },
       {
         Effect = "Allow", Action = ["s3:DeleteObject"], Resource = "arn:aws:s3:::fiap-tfstate-456687462806/fiap/database-shared.tfstate.tflock"
+      },
+      {
+        Effect = "Allow", Action = ["s3:GetObjectTagging", "s3:PutObjectTagging"], Resource = "arn:aws:s3:::fiap-tfstate-456687462806/fiap/bootstrap/bootstrap_databases.py"
+      },
+      {
+        Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*"
       },
       {
         Effect = "Allow", Action = ["rds:Describe*", "rds:ListTagsForResource"], Resource = "*"
@@ -56,7 +63,7 @@ resource "aws_iam_role_policy" "github_database_terraform" {
         Effect = "Allow", Action = ["ec2:Describe*"], Resource = "*"
       },
       {
-        Effect = "Allow", Action = ["ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:CreateTags", "ec2:DeleteTags", "ec2:CreateSecurityGroupRule", "ec2:DeleteSecurityGroupRule", "ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupEgress"], Resource = [
+        Effect = "Allow", Action = ["ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:CreateTags", "ec2:DeleteTags", "ec2:ModifySecurityGroupRules", "ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupEgress"], Resource = [
           "arn:aws:ec2:sa-east-1:456687462806:security-group/*", "arn:aws:ec2:sa-east-1:456687462806:security-group-rule/*", "arn:aws:ec2:sa-east-1:456687462806:vpc/*"
         ]
       },
@@ -70,7 +77,7 @@ resource "aws_iam_role_policy" "github_database_terraform" {
         Effect = "Allow", Action = ["iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:UpdateAssumeRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:TagRole", "iam:UntagRole", "iam:PassRole", "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy"], Resource = "arn:aws:iam::456687462806:role/fiap-database-bootstrap"
       },
       {
-        Effect = "Allow", Action = ["codebuild:CreateProject", "codebuild:UpdateProject", "codebuild:DeleteProject", "codebuild:BatchGetProjects", "codebuild:ListTagsForResource"], Resource = "arn:aws:codebuild:sa-east-1:456687462806:project/fiap-database-bootstrap"
+        Effect = "Allow", Action = ["codebuild:CreateProject", "codebuild:UpdateProject", "codebuild:DeleteProject", "codebuild:BatchGetProjects"], Resource = "arn:aws:codebuild:sa-east-1:456687462806:project/fiap-database-bootstrap"
       }
     ]
   })
