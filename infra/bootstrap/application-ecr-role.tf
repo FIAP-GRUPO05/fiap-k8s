@@ -40,6 +40,12 @@ resource "aws_iam_role_policy" "github_application_ecr" {
       {
         Effect = "Allow"
         Action = [
+          "ecr:CreateRepository",
+          "ecr:DeleteRepository",
+          "ecr:DescribeRepositories",
+          "ecr:PutLifecyclePolicy",
+          "ecr:GetLifecyclePolicy",
+          "ecr:DeleteLifecyclePolicy",
           "ecr:BatchCheckLayerAvailability",
           "ecr:CompleteLayerUpload",
           "ecr:InitiateLayerUpload",
@@ -51,6 +57,19 @@ resource "aws_iam_role_policy" "github_application_ecr" {
           "ecr:GetDownloadUrlForLayer"
         ]
         Resource = "arn:aws:ecr:sa-east-1:456687462806:repository/fiap-application"
+      },
+      {
+        Effect    = "Allow", Action = ["s3:ListBucket"],
+        Resource  = "arn:aws:s3:::fiap-tfstate-456687462806",
+        Condition = { StringLike = { "s3:prefix" = ["fiap/registry.tfstate", "fiap/registry.tfstate.tflock"] } }
+      },
+      {
+        Effect   = "Allow", Action = ["s3:GetObject", "s3:PutObject"],
+        Resource = ["arn:aws:s3:::fiap-tfstate-456687462806/fiap/registry.tfstate", "arn:aws:s3:::fiap-tfstate-456687462806/fiap/registry.tfstate.tflock"]
+      },
+      {
+        Effect   = "Allow", Action = ["s3:DeleteObject"],
+        Resource = "arn:aws:s3:::fiap-tfstate-456687462806/fiap/registry.tfstate.tflock"
       },
       {
         Effect = "Allow"
