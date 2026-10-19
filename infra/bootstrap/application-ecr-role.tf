@@ -46,7 +46,9 @@ resource "aws_iam_role_policy" "github_application_ecr" {
           "ecr:UploadLayerPart",
           "ecr:PutImage",
           "ecr:BatchGetImage",
-          "ecr:DescribeImages"
+          "ecr:DescribeImages",
+          "ecr:ListImages",
+          "ecr:GetDownloadUrlForLayer"
         ]
         Resource = "arn:aws:ecr:sa-east-1:456687462806:repository/fiap-application"
       },
@@ -57,6 +59,10 @@ resource "aws_iam_role_policy" "github_application_ecr" {
           "arn:aws:codebuild:sa-east-1:456687462806:project/fiap-eks-deploy",
           "arn:aws:codebuild:sa-east-1:456687462806:build/fiap-eks-deploy:*"
         ]
+      },
+      {
+        Effect   = "Allow", Action = ["secretsmanager:GetSecretValue"],
+        Resource = [for environment in ["develop", "homol", "prod"] : "arn:aws:secretsmanager:sa-east-1:456687462806:secret:fiap/${environment}/admin-*"]
       }
     ]
   })

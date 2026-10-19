@@ -40,7 +40,15 @@ resource "aws_iam_role_policy" "github_platform" {
       { Effect = "Allow", Action = ["codebuild:StartBuild", "codebuild:BatchGetBuilds"], Resource = [
         "arn:aws:codebuild:sa-east-1:456687462806:project/fiap-platform-bootstrap",
         "arn:aws:codebuild:sa-east-1:456687462806:build/fiap-platform-bootstrap:*"
-      ] }
+      ] },
+      { Effect = "Allow", Action = ["s3:ListBucket"], Resource = "arn:aws:s3:::fiap-tfstate-456687462806", Condition = {
+        StringLike = { "s3:prefix" = ["fiap/observability.tfstate", "fiap/observability.tfstate.tflock"] }
+      } },
+      { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = [
+        "arn:aws:s3:::fiap-tfstate-456687462806/fiap/observability.tfstate",
+        "arn:aws:s3:::fiap-tfstate-456687462806/fiap/observability.tfstate.tflock"
+      ] },
+      { Effect = "Allow", Action = ["s3:DeleteObject"], Resource = "arn:aws:s3:::fiap-tfstate-456687462806/fiap/observability.tfstate.tflock" }
     ]
   })
 }

@@ -46,8 +46,8 @@ resource "aws_iam_openid_connect_provider" "github" {
   client_id_list = ["sts.amazonaws.com"]
 }
 
-# Esta role serve somente para conferir a identidade da conta no CI.
-# Sem policy anexada, ela nao consegue ler ou alterar recursos do projeto.
+# PRs conferem a identidade e podem invocar somente o probe agregado de telemetria.
+# Nao recebem acesso a credenciais nem permissao para alterar a infraestrutura.
 resource "aws_iam_role" "github_preflight" {
   for_each = local.repositories
 
