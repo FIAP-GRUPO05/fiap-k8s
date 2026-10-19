@@ -43,6 +43,30 @@ resource "newrelic_nrql_alert_condition" "service_order_failures" {
   }
 }
 
+resource "newrelic_nrql_alert_condition" "https_uptime" {
+  policy_id                      = newrelic_alert_policy.fiap_api.id
+  type                           = "static"
+  name                           = "Disponibilidade HTTPS (${var.environment})"
+  enabled                        = true
+  violation_time_limit_seconds   = 3600
+  aggregation_window             = 300
+  aggregation_method             = "event_timer"
+  aggregation_timer              = 60
+  expiration_duration            = 900
+  open_violation_on_expiration   = true
+  close_violations_on_expiration = true
+
+  nrql {
+    query = "SELECT latest(healthy) FROM FiapUptimeCheck WHERE environment = '${var.environment}'"
+  }
+  critical {
+    operator              = "below"
+    threshold             = 1
+    threshold_duration    = 300
+    threshold_occurrences = "at_least_once"
+  }
+}
+
 resource "newrelic_one_dashboard" "fiap_api" {
   name        = "FIAP API (${var.environment})"
   permissions = "private"
@@ -124,6 +148,28 @@ resource "newrelic_one_dashboard" "fiap_api" {
       height = 3
       nrql_query {
         query = "SELECT timestamp, event AS 'evento', priority AS 'prioridade', title AS 'incidente' FROM NrAiIncident WHERE conditionName = '${local.nr_service_order_alert_name}' LIMIT 50"
+      }
+    }
+
+    widget_billboard {
+      title  = "Disponibilidade HTTPS (%)"
+      row    = 13
+      column = 1
+      width  = 6
+      height = 3
+      nrql_query {
+        query = "SELECT average(healthy) * 100 AS 'health e JWKS' FROM FiapUptimeCheck WHERE environment = '${var.environment}' SINCE 1 day ago"
+      }
+    }
+
+    widget_line {
+      title  = "Tempo da verificacao HTTPS (ms)"
+      row    = 13
+      column = 7
+      width  = 6
+      height = 3
+      nrql_query {
+        query = "SELECT average(responseTimeMs) FROM FiapUptimeCheck WHERE environment = '${var.environment}' TIMESERIES 5 minutes"
       }
     }
   }

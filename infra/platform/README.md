@@ -55,3 +55,20 @@ GitHub para `fiap/shared/newrelic`; nenhum valor precisa passar por maquinas
 dos integrantes. A excecao `bootstrap_feature_ref` no bootstrap OIDC deve
 permanecer `null` depois da verificacao inicial. E-mail usa `MAIL_TIPE=NONE`
 enquanto a integracao real de notificacoes estiver pendente.
+
+## Terraform no CI/CD
+
+O job Deploy shared platform aplica esta raiz somente depois de um merge em prod.
+O papel `fiap-gh-terraform-fiap-k8s` aceita apenas essa branch e gerencia os
+recursos FIAP; ele nao administra usuarios IAM nem o provedor OIDC. A instalacao
+de observabilidade acontece depois do apply e a promocao depende de ambos.
+Veja [o fluxo completo](../../docs/CI-CD.md).
+
+## Monitor HTTPS
+
+`fiap-uptime-probe` roda a cada cinco minutos via EventBridge, fora da VPC,
+e verifica health e JWKS das tres URLs publicas do API Gateway. Envia somente
+status, ambiente e duracao ao New Relic como `FiapUptimeCheck`. A chave de ingestao
+e carregada do Secrets Manager em memoria. Os dashboards incluem disponibilidade
+HTTPS e tempo da verificacao; alertas detectam falhas e 15 minutos sem sinal.
+O monitor nao substitui a regressao autenticada de negocio executada no deploy.

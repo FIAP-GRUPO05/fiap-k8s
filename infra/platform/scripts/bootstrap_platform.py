@@ -44,6 +44,9 @@ with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as value_file:
     run("helm", "upgrade", "--install", "newrelic-bundle", "nri-bundle",
         "--repo", "https://helm-charts.newrelic.com", "--version", os.environ["NEW_RELIC_CHART_VERSION"],
         "--namespace", "newrelic", "--create-namespace", "--values", value_file.name,
+        # The chart's cert-generation hook owns webhook caBundle. Client-side
+        # merging preserves that field during repeated Helm 4 upgrades.
+        "--server-side=false",
         "--wait", "--timeout", "10m")
 
 for environment in ("develop", "homol", "prod"):

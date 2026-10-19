@@ -34,7 +34,7 @@ resource "aws_iam_role_policy" "github_lambda" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Action = ["lambda:UpdateFunctionCode", "lambda:GetFunctionConfiguration", "lambda:PublishVersion", "lambda:GetAlias", "lambda:UpdateAlias", "lambda:InvokeFunction"]
+      Action = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:PublishVersion", "lambda:GetAlias", "lambda:UpdateAlias", "lambda:InvokeFunction"]
       Resource = [
         "arn:aws:lambda:sa-east-1:456687462806:function:fiap-auth-${each.key}",
         "arn:aws:lambda:sa-east-1:456687462806:function:fiap-auth-${each.key}:*"

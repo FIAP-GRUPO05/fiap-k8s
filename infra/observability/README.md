@@ -12,3 +12,12 @@ O indicador de disponibilidade usa amostras reais de prontidao dos pods.
 Ele nao mede disponibilidade externa ponta a ponta. Monitores Synthetics pagos
 nao sao criados nesta topologia de menor custo. Os dashboards sao privados na
 conta New Relic. Alertas abrem incidentes, sem enviar mensagens a terceiros.
+
+## Monitor HTTPS
+
+`fiap-uptime-probe` roda a cada cinco minutos via EventBridge, fora da VPC,
+e verifica health e JWKS das tres URLs publicas do API Gateway. Envia somente
+status, ambiente e duracao ao New Relic como `FiapUptimeCheck`. A chave de ingestao
+e carregada do Secrets Manager em memoria. Os dashboards incluem disponibilidade
+HTTPS e tempo da verificacao; alertas detectam falhas e 15 minutos sem sinal.
+O monitor nao substitui a regressao autenticada de negocio executada no deploy.
