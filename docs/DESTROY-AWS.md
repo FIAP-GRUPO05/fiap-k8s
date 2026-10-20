@@ -44,6 +44,8 @@ Antes dos merges de instalação, o administrador configura `FIAP_INFRA_STATE=de
 5. Aplicar o Terraform revisado de `infra/bootstrap`, com perfil administrativo da conta TWM e state bootstrap correto. Isso cria `fiap-gh-plan-destroy` e `fiap-gh-destroy-infra`, sem AdministratorAccess. O subject usa IDs imutáveis do repositório; a role destrutiva exige o contexto de environment. As roles de publicação recebem somente leitura do controle central S3.
 6. Instalar os guards nos quatro repositórios. Como a infraestrutura já foi desmontada parcialmente, a instalação é feita em manutenção, sem recriar EKS/RDS ou depender de telemetria inexistente. Em manutenção, deploys e promoções automáticas ficam bloqueados; as revisões do código de instalação continuam necessárias.
 7. Conferir que o código operacional confiável está em main antes de criar ALL. O configurador recusa a criação de ALL se main ainda não contém o script. Durante a instalação inicial, os PRs de develop para release, release para prod e prod para main são revisados/mergeados em manutenção, sem publicar infraestrutura; a promoção automática de ambientes fica bloqueada. Depois disso, aplicar a configuração de ALL e conferir o código nos dois destinos antes do primeiro pedido.
+
+O pedido e a execução verificam o hash do guard e sua presença nos workflows de develop, release ativa, prod e main dos quatro repositórios. Instalação parcial é recusada, pois workflows antigos poderiam ignorar o bloqueio e recriar recursos durante a desmontagem.
 8. Habilitar Cost Explorer pelo console de Billing. Para detalhamento por recurso, habilitar os dados granulares aplicáveis e/ou manter um relatório de custos com IDs de recursos. Os dados têm atraso e a cobertura histórica é limitada. A ausência dessa configuração não será interpretada como custo zero.
 
 As permissões de escrita de rede da role operacional são regionais; o script restringe a conta, a VPC e os recursos do projeto pelo inventário aprovado. Revisar os ARNs e relações antes de aplicar. A role não possui permissão para alterar IAM, assumir outras roles ou ampliar suas próprias políticas.
@@ -82,6 +84,8 @@ O script aguarda liberações de ENIs pelo serviço proprietário, resolve refer
 ## Relatório e custos
 
 Ao final do runner, mesmo em falha, ficam um link para o resumo da execução e outro para os artefatos HTML/Markdown/JSON, com retenção de 90 dias:
+
+Um job final independente, com role somente de leitura e outro runner, repete a auditoria mesmo se o job destrutivo falhar ou atingir o limite de tempo. Ele recupera o plano aprovado e o log anterior quando disponível. Se o runner original não publicar o log, informa essa ausência e mostra a verificação nova, sem inventar ações realizadas. Cancelamento forçado do workflow ou indisponibilidade do GitHub pode impedir jobs finais; nesse caso usar a auditoria manual abaixo.
 
 - ✅ Recurso não encontrado na auditoria final, ou fora de operação com exclusão agendada sem a tarifa de retenção indicada.
 - ❌ Recurso ainda encontrado ou exclusão com falha.

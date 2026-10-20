@@ -556,3 +556,53 @@ jobs:
         echo "Relatório: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
         echo "Artefatos: $REPORT_URL"
         printf "\n## Relatório final\n[Ver resumo da execução](https://github.com/%s/actions/runs/%s) · [Baixar relatório HTML e evidências](%s)\n" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$REPORT_URL" >> "$GITHUB_STEP_SUMMARY"
+  destroy-final-audit:
+    name: Destroy final report
+    needs:
+    - route
+    - destroy-execute
+    if: always() && needs.route.result == 'success' && github.event_name == 'push' && github.ref_name == 'ALL' && !github.event.created
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: aws-destroy
+    permissions:
+      contents: read
+      id-token: write
+      actions: read
+      pull-requests: read
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: main
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - uses: aws-actions/configure-aws-credentials@v6.3.0
+      with:
+        aws-region: sa-east-1
+        allowed-account-ids: '456687462806'
+        role-to-assume: arn:aws:iam::456687462806:role/fiap-gh-plan-destroy
+    - name: Verificação independente após sucesso ou falha do runner destrutivo
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: python .github/scripts/destroy_ops.py audit --after-execution
+    - name: Gerar relatório mesmo em falha
+      if: always()
+      run: python .github/scripts/destroy_report.py
+    - uses: actions/upload-artifact@v4
+      if: always()
+      id: report
+      with:
+        name: aws-destroy-report-${{ github.run_id }}-${{ github.run_attempt }}-final
+        path: destroy-report/
+        retention-days: 90
+        if-no-files-found: error
+    - name: Link final do relatório
+      if: always()
+      env:
+        REPORT_URL: ${{ steps.report.outputs.artifact-url }}
+      run: |-
+        echo "Relatório: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+        echo "Artefatos: $REPORT_URL"
+        printf "\n## Relatório final\n[Ver resumo da execução](https://github.com/%s/actions/runs/%s) · [Baixar relatório HTML e evidências](%s)\n" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$REPORT_URL" >> "$GITHUB_STEP_SUMMARY"

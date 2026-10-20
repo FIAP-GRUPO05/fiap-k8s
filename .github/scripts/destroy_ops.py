@@ -148,6 +148,19 @@ def snapshot_valid(document):
                 raise ValueError(f"{repo}/{branch} changed after the request; review a fresh snapshot")
 
 
+def installation_ready(document):
+    import base64
+    expected = (Path(__file__).parent / "infra_guard.py").read_bytes().replace(b"\r\n", b"\n")
+    expected_sha = hashlib.sha1(b"blob " + str(len(expected)).encode() + b"\0" + expected).hexdigest()
+    for repo, snapshot in document["repositories"].items():
+        for branch, revision in snapshot["refs"].items():
+            guard = content(repo, ".github/scripts/infra_guard.py", revision)
+            workflow = content(repo, ".github/workflows/pipeline.yml", revision)
+            text = base64.b64decode(workflow["content"]).decode()
+            if guard["sha"] != expected_sha or "FIAP_INFRA_STATE" not in text or "python .github/scripts/infra_guard.py" not in text:
+                raise ValueError(f"Install the reviewed publication guard on {repo}/{branch} before requesting destroy")
+
+
 def prepare():
     actor = api("GET", "user")["login"]
     if actor not in TEAM:
@@ -165,6 +178,7 @@ def prepare():
         document["repositories"][repo] = {"release": release,
             "refs": {branch: ref(repo, branch) for branch in ("develop", release, "prod", "main")}}
     validate_request(document)
+    installation_ready(document)
     path = Path(REQUEST)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
@@ -184,6 +198,7 @@ def propose():
     if document["implementation_sha"] != ref("fiap-k8s", "main"):
         raise ValueError("Request implementation SHA is stale")
     snapshot_valid(document)
+    installation_ready(document)
     existing = api("GET", repo_path("fiap-k8s") + "/pulls?state=open&base=ALL&head=" + ORG + ":" + SOURCE)
     body = "\n".join([
         "Solicita a desmontagem real da infraestrutura AWS compartilhada dos quatro projetos.",
@@ -207,6 +222,7 @@ def plan(number, directory):
     from aws_destroy import inventory, cost_report
     pr, document = validate_pr(number)
     snapshot_valid(document)
+    installation_ready(document)
     name = "destroy-plan-" + pr["head"]["sha"]
     artifacts = api("GET", repo_path("fiap-k8s") + "/actions/artifacts?name=" + name)["artifacts"]
     available = any(not artifact["expired"] for artifact in artifacts)
@@ -325,6 +341,7 @@ def execute(directory):
         record["approvals"] = check_approvals(pr, document)
         record["request"] = document
         snapshot_valid(document)
+        installation_ready(document)
         plan_document = approved_plan(pr, directory)
         if plan_document["request"] != document:
             raise ValueError("Approved plan differs from the request")
@@ -362,14 +379,42 @@ def execute(directory):
         raise SystemExit("Resources removed; billing verification is pending. See report; no zero-cost claim is made.")
 
 
-def audit(directory):
+def audit(directory, after_execution=False):
     from aws_destroy import inventory, cost_report
     current = inventory()
     directory.mkdir(parents=True, exist_ok=True)
     record = {"status": "audit-only", "before": current, "after": current,
               "costs": cost_report(dt.date.today().replace(day=1).isoformat()), "errors": [], "actions": [], "sync": []}
+    if after_execution:
+        record["status"] = "independent-final-audit"
+        try:
+            event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+            candidates = api("GET", repo_path("fiap-k8s") + f"/commits/{event['after']}/pulls")
+            candidates = [pr for pr in candidates if pr.get("merged_at") and pr["base"]["ref"] == TARGET and pr.get("merge_commit_sha") == event["after"]]
+            if len(candidates) != 1:
+                raise ValueError("Merged operational PR not identified")
+            pr = api("GET", repo_path("fiap-k8s") + f"/pulls/{candidates[0]['number']}")
+            plan_document = approved_plan(pr, directory)
+            record["before"] = plan_document["inventory"]
+            record["request"] = plan_document["request"]
+            record["costs"] = cost_report(record["request"]["billing_start"])
+            artifacts = api("GET", repo_path("fiap-k8s") + f"/actions/runs/{os.environ['GITHUB_RUN_ID']}/artifacts")["artifacts"]
+            original_name = f"aws-destroy-report-{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}"
+            source = next((item for item in artifacts if item["name"] == original_name and not item["expired"]), None)
+            if source:
+                blob = api("GET", repo_path("fiap-k8s") + f"/actions/artifacts/{source['id']}/zip", raw=True)
+                with zipfile.ZipFile(io.BytesIO(blob)) as archive:
+                    previous = json.loads(archive.read("execution.json"))
+                for field in ("actions", "sync", "approvals"):
+                    record[field] = previous.get(field, [])
+                record["execution_status"] = previous.get("status", "unknown")
+                record["errors"] += previous.get("errors", [])
+            else:
+                record["errors"].append("Original runner did not publish its log; fresh AWS verification is shown independently")
+        except Exception as error:
+            record["errors"].append("Could not recover approved execution history: " + str(error))
     (directory / "execution.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
-    if current["resources"] or current["errors"] or not record["costs"]["available"]:
+    if current["resources"] or current["errors"] or record["errors"] or not record["costs"]["available"]:
         raise SystemExit("Residual resources, incomplete audit or unavailable billing; see report")
 
 
@@ -378,6 +423,7 @@ if __name__ == "__main__":
     parser.add_argument("command", choices=("prepare", "propose", "validate", "approvals", "plan", "execute", "audit"))
     parser.add_argument("--pr", type=int)
     parser.add_argument("--directory", type=Path, default=Path("destroy-report"))
+    parser.add_argument("--after-execution", action="store_true")
     args = parser.parse_args()
     if args.command == "prepare":
         prepare()
@@ -395,4 +441,4 @@ if __name__ == "__main__":
     elif args.command == "execute":
         execute(args.directory)
     elif args.command == "audit":
-        audit(args.directory)
+        audit(args.directory, args.after_execution)

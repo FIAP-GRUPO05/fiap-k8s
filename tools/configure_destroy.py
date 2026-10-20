@@ -41,8 +41,9 @@ if __name__ == "__main__":
         raise SystemExit("Use a dedicated operations App, not the promotion App")
     root = Path(__file__).resolve().parents[1]
     path = root / ".github/rulesets/protect-ALL.json"
-    path.write_text(json.dumps(ruleset(), indent=2) + "\n", encoding="utf-8")
-    print("Prepared " + str(path))
+    if not args.freeze_only:
+        path.write_text(json.dumps(ruleset(), indent=2) + "\n", encoding="utf-8")
+        print("Prepared " + str(path))
     if not args.apply:
         print("No remote changes. Apply only after reviewing the App scope and installation checklist.")
         raise SystemExit(0)

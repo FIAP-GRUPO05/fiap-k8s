@@ -42,7 +42,7 @@ locals {
         "ec2:DeleteSecurityGroup", "ec2:DisassociateRouteTable", "ec2:DeleteRouteTable", "ec2:DeleteSubnet",
         "ec2:DetachInternetGateway", "ec2:DeleteInternetGateway", "ec2:DeleteVpc"
       ]
-      Resource = [for kind in ["instance", "volume", "snapshot", "vpc-endpoint", "natgateway", "elastic-ip", "security-group", "security-group-rule", "route-table", "subnet", "internet-gateway", "vpc"] : "arn:aws:ec2:sa-east-1:456687462806:${kind}/*"]
+      Resource = concat([for kind in ["instance", "volume", "snapshot", "vpc-endpoint", "natgateway", "elastic-ip", "security-group", "security-group-rule", "route-table", "subnet", "internet-gateway", "vpc"] : "arn:aws:ec2:sa-east-1:456687462806:${kind}/*"], ["arn:aws:ec2:sa-east-1::snapshot/*"])
     },
     {
       Effect   = "Allow"
@@ -128,6 +128,7 @@ resource "aws_iam_role" "github_destroy_plan" {
         "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         "token.actions.githubusercontent.com:sub" = [
           "repo:${local.github_organization}@${local.github_owner_id}/fiap-k8s@${local.repositories["fiap-k8s"]}:pull_request",
+          "repo:${local.github_organization}@${local.github_owner_id}/fiap-k8s@${local.repositories["fiap-k8s"]}:environment:aws-destroy",
           "repo:${local.github_organization}@${local.github_owner_id}/fiap-k8s@${local.repositories["fiap-k8s"]}:ref:refs/heads/main"
         ]
       } }
