@@ -54,7 +54,7 @@ if __name__ == "__main__":
             variables = gh("GET", base)["variables"]
             exists = any(item["name"] == "FIAP_INFRA_STATE" for item in variables)
             gh("PATCH" if exists else "POST", base + ("/FIAP_INFRA_STATE" if exists else ""),
-               {"name": "FIAP_INFRA_STATE", "value": "destroyed"})
+               {"name": "FIAP_INFRA_STATE", "value": "maintenance"})
         print("Maintenance variables configured. Legacy workflows without the guard must not be used to publish.")
         raise SystemExit(0)
     # Never create ALL from a main that cannot validate the operational PR.
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         variables = gh("GET", base + "/actions/variables")["variables"]
         method = "PATCH" if any(item["name"] == "FIAP_INFRA_STATE" for item in variables) else "POST"
         gh(method, base + "/actions/variables" + ("/FIAP_INFRA_STATE" if method == "PATCH" else ""),
-           {"name": "FIAP_INFRA_STATE", "value": "destroyed"})
+           {"name": "FIAP_INFRA_STATE", "value": "maintenance"})
         existing = gh("GET", base + "/rulesets")
         for item in existing:
             if item["name"] in {"protect-develop", "protect-release", "protect-prod", "protect-main"}:
