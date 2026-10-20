@@ -94,6 +94,10 @@ Um job final independente, com role somente de leitura e outro runner, repete a 
 
 O custo histórico implementado usa Cost Explorer por serviço da conta e período solicitado, com moeda e marca Estimated. **Ele não representa custo individual comprovado de cada recurso.** Sem dados de faturamento apropriados, não é possível prometer esse detalhamento. Não há rateio inventado nem substituição de erro por zero. Se o acesso continuar `User not enabled for cost explorer access`, a verificação financeira permanece pendente, mesmo que os recursos tenham sido removidos.
 
+Consultas à API Cost Explorer também têm tarifa própria por requisição, conforme a [tabela da AWS](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/pricing/). O relatório é pontual, não um monitor contínuo. O consumo/taxas aparece separado de créditos e reembolsos, para não confundir saldo compensado com ausência de uso.
+
+Os estados Terraform são excluídos no modo de remoção dos dados do projeto. Como IAM/OIDC são preservados sem tarifa direta, uma reconstrução futura precisará reconciliar/importar essas identidades no novo state antes de aplicar o bootstrap; não assumir que um apply em state vazio adotará recursos existentes automaticamente.
+
 Uma auditoria posterior pode ser acionada em Actions → Phase 3 Pipeline → Run workflow → `destroy-audit`, na main. Ela consulta recursos e custos sem excluir nada. O relatório distingue comprovação de remoção, estado das exclusões agendadas e custos históricos; não declara garantia universal de zero cobrança da conta, de plano de suporte, GitHub ou New Relic.
 
 ## Verificação local
