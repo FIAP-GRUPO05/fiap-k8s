@@ -70,6 +70,17 @@ class ApprovalTests(unittest.TestCase):
 
 
 class AwsSafetyTests(unittest.TestCase):
+    def test_same_name_in_another_service_is_not_covered(self):
+        report = {"resources": [{"kind": "ecr", "id": "fiap-application"}], "free_resources": []}
+        self.assertTrue(cloud.covered_identifier("ecr", {"fiap-application"}, report))
+        self.assertFalse(cloud.covered_identifier("codebuild", {"fiap-application"}, report))
+        self.assertFalse(cloud.covered_identifier("sns", {"fiap-application"}, report))
+
+    def test_vpc_children_are_only_ec2_resources(self):
+        report = {"resources": [{"kind": "vpc", "id": "vpc-project", "children": ["sg-one"]}], "free_resources": []}
+        self.assertTrue(cloud.covered_identifier("ec2", {"sg-one"}, report))
+        self.assertFalse(cloud.covered_identifier("rds", {"sg-one"}, report))
+
     def test_default_client_cannot_delete(self):
         with patch("subprocess.run") as process, self.assertRaises(PermissionError):
             cloud.Aws().change("s3api", "delete-bucket", "--bucket", cloud.BUCKET)

@@ -99,6 +99,21 @@ def resource_keys(result):
     return keys
 
 
+def covered_identifier(service, candidates, report):
+    kinds = {"ec2": {"ec2", "volume", "ebs-snapshot", "nat", "eip", "endpoint", "vpc"},
+             "eks": {"eks"}, "rds": {"rds", "rds-snapshot", "rds-backup", "rds-subnet-group"},
+             "lambda": {"lambda"}, "apigateway": {"api", "vpc-link"}, "kms": {"kms", "aws-managed-kms"},
+             "ecr": {"ecr"}, "s3": {"bucket"}, "logs": {"logs"}, "codebuild": {"codebuild"},
+             "events": {"rule"}, "autoscaling": {"asg"}}
+    accepted = set()
+    for item in report["resources"] + report["free_resources"]:
+        if item["kind"] in kinds.get(service, set()):
+            accepted.add(item["id"])
+            if service == "ec2":
+                accepted.update(item.get("children", []))
+    return bool(candidates & accepted)
+
+
 def inventory(client=None):
     aws = client or Aws()
     aws.identity()
@@ -256,10 +271,10 @@ def inventory(client=None):
                 report["errors"].append("Project resource outside approved region: " + arn)
                 continue
             candidates = {arn, value, value.split("/", 1)[-1], value.split(":", 1)[-1].removesuffix(":*")}
-            handled = bool(candidates & identifiers)
+            handled = covered_identifier(service, candidates, report)
             if service == "apigateway":
                 parts = value.strip("/").split("/")
-                if len(parts) >= 2 and parts[0] in {"apis", "vpclinks"} and parts[1] in identifiers:
+                if len(parts) >= 2 and parts[0] in {"apis", "vpclinks"} and covered_identifier(service, {parts[1]}, report):
                     handled = True
             if service == "ec2" and value.startswith("vpc-endpoint/") and not handled:
                 endpoint_id = value.split("/", 1)[1]
