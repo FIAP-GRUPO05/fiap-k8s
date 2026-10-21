@@ -16,10 +16,24 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: api-container
         image: timbeck97/tc-fiap:latest
         imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - name: java-tmp
+          mountPath: /tmp
         ports:
         - containerPort: 8080
         envFrom:
@@ -30,3 +44,6 @@ spec:
           requests:
             cpu: "250m"      # 0,25 vCPU
             memory: "348Mi"
+      volumes:
+      - name: java-tmp
+        emptyDir: {}

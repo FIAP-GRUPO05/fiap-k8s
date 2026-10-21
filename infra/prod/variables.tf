@@ -48,6 +48,14 @@ variable "clusterName" {
   default     = "my-cluster"
   description = "Nome do cluster EKS"
 }
+variable "apiImage" {
+  type        = string
+  description = "Imagem publicada pelo pipeline de fiap-application para este ambiente"
+}
+variable "deploymentEnvironment" {
+  type        = string
+  description = "Identificador do ambiente usado para separar a telemetria no New Relic"
+}
 variable "logRetentionDays" {
   type        = number
   default     = 7

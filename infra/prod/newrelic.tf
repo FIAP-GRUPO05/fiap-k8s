@@ -21,7 +21,7 @@ resource "helm_release" "newrelic_bundle" {
     { name = "k8s-agents-operator.enabled", value = "true" },
   ]
 
- 
+
   depends_on = [aws_eks_node_group.main, time_sleep.wait_eks_access]
 }
 
@@ -42,7 +42,7 @@ spec:
     image: newrelic/newrelic-java-init:latest
     env:
       - name: NEW_RELIC_APP_NAME
-        value: "fiap-api"
+        value: "fiap-api-${var.deploymentEnvironment}"
       - name: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED
         value: "true"
       - name: NEW_RELIC_APPLICATION_LOGGING_FORWARDING_ENABLED
@@ -52,5 +52,8 @@ spec:
       - key: "app"
         operator: "In"
         values: ["api"]
+  namespaceLabelSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: prod
 YAML
 }

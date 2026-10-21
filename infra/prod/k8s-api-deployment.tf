@@ -27,9 +27,24 @@ spec:
         mailTypeHash: "${sha1(var.mailType)}"
         jwtConfigHash: "${sha1("${local.jwt_issuer}|${var.jwtAudience}")}"
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: api-container
-        image: timbeck97/tc-fiap:latest
+        image: ${var.apiImage}
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - name: java-tmp
+          mountPath: /tmp
         ports:
         - containerPort: 8080
         env:
@@ -72,5 +87,8 @@ spec:
           limits:
             cpu: "500m"      # teto de 0,5 vCPU
             memory: "768Mi"  # inclui o agente Java do New Relic
+      volumes:
+      - name: java-tmp
+        emptyDir: {}
 YAML
 }

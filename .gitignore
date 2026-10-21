@@ -1,0 +1,12 @@
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfplan
+**/terraform.tfvars
+**/*.auto.tfvars
+**/backend.local.hcl
+__pycache__/
+*.pyc
+
+
+destroy-report/
