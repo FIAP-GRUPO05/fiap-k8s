@@ -6,6 +6,36 @@ O código adiciona uma operação administrativa ao mesmo `pipeline.yml`. A ativ
 
 O nome é **exatamente `feature/destroy-infra-aws`**, no repositório **fiap-k8s**. O destino do PR é a branch **ALL**, em maiúsculas. Essa operação afeta a infraestrutura compartilhada dos quatro projetos e dos três ambientes.
 
+### Instalação e auditoria observadas em 22/10/2026
+
+| Componente | Situação conferida |
+|---|---|
+| Branch ALL | Criada a partir da main, com dois reviews obrigatórios e sem bypass |
+| Environment aws-destroy | Restrito à branch ALL; variável do Client ID e nome do secret presentes |
+| App fiap-operacoes-infra | Instalação limitada aos quatro repositórios; exceção nas 16 regras das branches normais |
+| Guards de publicação | Conferidos em develop, release ativa, prod e main dos quatro projetos |
+| Bootstrap IAM | Aplicado: duas roles novas, três políticas da operação e dez políticas de leitura do controle S3 |
+| Estado dos quatro projetos | maintenance; publicação de infraestrutura bloqueada |
+| Auditoria real pelo runner | Autenticação OIDC e consulta ao Cost Explorer funcionaram |
+| Exclusão real | Não executada; continua exigindo pedido, aprovações e merge em ALL |
+
+O apply administrativo registrou **15 adições, zero alterações e zero exclusões**.
+As roles instaladas são `fiap-gh-plan-destroy` e `fiap-gh-destroy-infra`; seus documentos foram comparados com o plano revisado.
+O CI/CD utiliza credenciais temporárias OIDC, sem depender de códigos de MFA de um integrante.
+O bootstrap local foi concluído com a sessão root existente, por decisão expressa do responsável de manter o MFA inalterado;
+essa exceção de instalação não concede acesso root aos runners.
+
+A [auditoria de 22/10](https://github.com/FIAP-GRUPO05/fiap-k8s/actions/runs/39731760026)
+encontrou 43 recursos remanescentes e gerou o relatório mesmo com resultado de falha.
+Além dos recursos ainda existentes, o código anterior classificou incorretamente os 13 segredos já inventariados como recursos desconhecidos.
+A correção associa o serviço Secrets Manager ao tipo `secret`, mantendo a conferência do ARN efetivamente inventariado,
+da tag do projeto e do prefixo `fiap/`. Segredos com exclusão agendada continuam separados dos recursos em operação.
+Recursos desconhecidos ou sem comprovação de pertencimento ao projeto continuam bloqueando o destroy.
+
+As regressões locais cobrem segredos ativos, exclusão agendada, ausência na listagem, tag ou prefixo incorretos e identificação em outro serviço.
+A correção precisa chegar à main pelo fluxo normal antes de repetir a auditoria manual confiável.
+Mesmo depois desse ajuste, uma auditoria com recursos remanescentes deve continuar retornando falha: ela não representa uma confirmação de infraestrutura desligada.
+
 ## Fluxo
 
 ```text
