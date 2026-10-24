@@ -140,6 +140,55 @@ class AwsSafetyTests(unittest.TestCase):
         self.assertEqual(result["total"], "0E-10")
 
 
+class SecretInventoryTests(unittest.TestCase):
+    secret_arn = "arn:aws:secretsmanager:sa-east-1:456687462806:secret:fiap/develop/application-abcdef"
+
+    def inventory(self, *, scheduled=False, listed=True, project_tag=True, name="fiap/develop/application"):
+        secret = {"Name": name, "Arn": self.secret_arn,
+                  "Tags": [{"Key": "Project", "Value": cloud.PROJECT if project_tag else "another-project"}]}
+        if scheduled:
+            secret["Deleted"] = "2026-10-29T00:00:00Z"
+
+        class Fake:
+            def identity(self):
+                return {"Account": cloud.ACCOUNT}
+
+            def run(self, service, operation, *arguments, **kwargs):
+                if (service, operation) == ("secretsmanager", "list-secrets"):
+                    return [secret] if listed else []
+                if (service, operation) == ("ec2", "describe-regions"):
+                    return [cloud.REGION]
+                if (service, operation) == ("resourcegroupstaggingapi", "get-resources"):
+                    return [SecretInventoryTests.secret_arn]
+                return []
+
+        return cloud.inventory(Fake())
+
+    def test_active_owned_secret_is_covered_by_the_regional_tag_audit(self):
+        report = self.inventory()
+        self.assertEqual(report["errors"], [])
+        self.assertTrue(any(item["kind"] == "secret" and item["id"] == self.secret_arn
+                            for item in report["resources"]))
+
+    def test_scheduled_secret_is_covered_without_becoming_operational(self):
+        report = self.inventory(scheduled=True)
+        self.assertEqual(report["errors"], [])
+        self.assertFalse(any(item["kind"] == "secret" for item in report["resources"]))
+        self.assertTrue(any(item["kind"] == "secret" and item["state"] == "ScheduledDeletion"
+                            for item in report["free_resources"]))
+
+    def test_unverified_secret_keeps_the_operation_blocked(self):
+        for arguments in ({"listed": False}, {"project_tag": False}, {"name": "another-project/application"}):
+            with self.subTest(arguments=arguments):
+                report = self.inventory(**arguments)
+                self.assertIn("Tagged resource not covered by the teardown engine: " + self.secret_arn,
+                              report["errors"])
+
+    def test_secret_coverage_does_not_authorize_another_service(self):
+        report = self.inventory()
+        self.assertFalse(cloud.covered_identifier("ecr", {self.secret_arn}, report))
+
+
 class SynchronizationTests(unittest.TestCase):
     def test_concurrent_update_aborts_without_writing(self):
         with patch.object(ops, "REPOS", ("fiap-k8s",)), patch.object(ops, "ref", return_value="d" * 40), patch.object(ops, "api") as api:

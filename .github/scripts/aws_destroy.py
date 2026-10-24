@@ -104,7 +104,7 @@ def covered_identifier(service, candidates, report):
              "eks": {"eks"}, "rds": {"rds", "rds-snapshot", "rds-backup", "rds-subnet-group"},
              "lambda": {"lambda"}, "apigateway": {"api", "vpc-link"}, "kms": {"kms", "aws-managed-kms"},
              "ecr": {"ecr"}, "s3": {"bucket"}, "logs": {"logs"}, "codebuild": {"codebuild"},
-             "events": {"rule"}, "autoscaling": {"asg"}}
+             "events": {"rule"}, "autoscaling": {"asg"}, "secretsmanager": {"secret"}}
     accepted = set()
     for item in report["resources"] + report["free_resources"]:
         if item["kind"] in kinds.get(service, set()):
