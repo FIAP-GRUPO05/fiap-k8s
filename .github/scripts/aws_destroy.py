@@ -41,7 +41,7 @@ class Aws:
                                 env=dict(os.environ, AWS_PAGER="", AWS_RETRY_MODE="adaptive", AWS_MAX_ATTEMPTS="5"))
         if result.returncode:
             error = result.stderr.strip()
-            if missing and any(code in error for code in ("ResourceNotFound", "DBInstanceNotFound", "DBSnapshotNotFound", "LoadBalancerNotFound", "NoSuchBucket", "NoSuchKey", "RepositoryNotFound", "NotFoundException", "InvalidGroup.NotFound", "InvalidVpcID.NotFound", "InvalidVpcEndpointId.NotFound")):
+            if missing and any(code in error for code in ("ResourceNotFound", "DBInstanceNotFound", "DBSnapshotNotFound", "LoadBalancerNotFound", "NoSuchBucket", "NoSuchKey", "RepositoryNotFound", "NotFoundException", "InvalidGroup.NotFound", "InvalidSecurityGroupRuleId.NotFound", "InvalidVpcID.NotFound", "InvalidVpcEndpointId.NotFound")):
                 return None
             raise RuntimeError(f"{service}/{operation}: {error[:1800]}")
         return json.loads(result.stdout) if result.stdout.strip() else None
@@ -276,6 +276,15 @@ def inventory(client=None):
                 parts = value.strip("/").split("/")
                 if len(parts) >= 2 and parts[0] in {"apis", "vpclinks"} and covered_identifier(service, {parts[1]}, report):
                     handled = True
+            if service == "ec2" and value.startswith("security-group-rule/") and not handled:
+                rule_id = value.split("/", 1)[1]
+                errors_before = len(report["errors"])
+                rule = read("ec2", "describe-security-group-rules", "--security-group-rule-ids", rule_id,
+                            query="SecurityGroupRules", missing=True)
+                if len(report["errors"]) == errors_before and not rule:
+                    handled = True
+                    report["free_resources"].append({"kind": "verified-absent-security-group-rule", "id": rule_id,
+                        "state": "Absent", "reason": "Entrada de tags antiga; consulta autoritativa do EC2 não encontrou a regra."})
             if service == "ec2" and value.startswith("vpc-endpoint/") and not handled:
                 endpoint_id = value.split("/", 1)[1]
                 errors_before = len(report["errors"])
