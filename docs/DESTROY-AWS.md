@@ -36,6 +36,31 @@ As regressões locais cobrem segredos ativos, exclusão agendada, ausência na l
 A correção precisa chegar à main pelo fluxo normal antes de repetir a auditoria manual confiável.
 Mesmo depois desse ajuste, uma auditoria com recursos remanescentes deve continuar retornando falha: ela não representa uma confirmação de infraestrutura desligada.
 
+## Execução real de 25/10/2026 UTC
+
+O [PR #32](https://github.com/FIAP-GRUPO05/fiap-k8s/pull/32) recebeu as aprovações de `timbeck97` e `matpitas` no commit do pedido.
+O solicitante habilitou auto-merge; o check inicial de aprovações foi reexecutado após os reviews para substituir o resultado anterior de falta de aprovação.
+As regras obrigatórias foram mantidas. O merge em ALL disparou a [execução 40148447028](https://github.com/FIAP-GRUPO05/fiap-k8s/actions/runs/40148447028).
+
+| Conferência | Resultado registrado |
+|---|---|
+| Sincronização | 16 branches nos quatro projetos, na ordem develop → release ativa → prod → main |
+| Operações registradas | 72 ações concluídas, incluindo exclusão do bucket de estado por último |
+| Recursos ativos restantes no inventário | 0 |
+| Exclusões agendadas | 13 segredos e uma chave KMS, com janela de sete dias |
+| Identidades preservadas | IAM, OIDC e chaves gerenciadas pela AWS |
+| Resultado original do workflow | Falha de auditoria: 13 referências de regras de segurança ainda retornadas na consulta de tags |
+
+A auditoria independente confirmou os mesmos resultados e publicou os artefatos, sem registrar erro nas operações de exclusão.
+O resultado vermelho não deve ser convertido em sucesso apenas pela ausência de VPC: cada referência de regra precisa de uma consulta direta ao EC2.
+A correção consulta `DescribeSecurityGroupRules` pelo ID e só classifica a referência como ausente quando o EC2 confirma a ausência.
+Regra existente, erro de permissão ou ID malformado continuam bloqueando a auditoria.
+O código `InvalidSecurityGroupRuleId.NotFound` significa regra inexistente na [referência oficial do EC2](https://docs.aws.amazon.com/ec2/latest/devguide/errors-overview.html).
+
+O snapshot financeiro independente registrou consumo estimado de USD 31,1124656281 e créditos de USD -31,1124673418, com líquido aproximadamente zero.
+Esses valores são históricos, sujeitos ao atraso do faturamento, e não representam ausência de consumo nem garantia de custo futuro zero.
+Não repetir o destroy para tratar referências de tags: promover a correção e executar somente `destroy-audit` pela main.
+
 ## Fluxo
 
 ```text
