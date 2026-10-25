@@ -219,7 +219,7 @@ def propose():
 
 
 def plan(number, directory):
-    from aws_destroy import inventory, cost_report
+    from aws_destroy import inventory, cost_report, resource_keys
     pr, document = validate_pr(number)
     snapshot_valid(document)
     installation_ready(document)
