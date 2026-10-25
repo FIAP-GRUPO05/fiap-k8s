@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "request_id": "70e9679d-15c6-49a8-ad80-f232186cdb29",
+  "requested_by": "codewesleylima",
+  "account": "456687462806",
+  "region": "sa-east-1",
+  "confirmation": "DESTRUIR-456687462806",
+  "delete_project_data": true,
+  "implementation_sha": "f6668184a3fd61a29270c462f5ff5f7b9583df3b",
+  "billing_start": "2026-10-01",
+  "repositories": {
+    "fiap-k8s": {
+      "release": "release/v0.4.2",
+      "refs": {
+        "develop": "1528a6d8ad882e3eb435fc9089b16f566c774f7d",
+        "release/v0.4.2": "63e1c71bad21044f97e2a2e1b065e474863dfa66",
+        "prod": "05536a3a80d8fccc406b8aeac40c1a5f689a953b",
+        "main": "f6668184a3fd61a29270c462f5ff5f7b9583df3b"
+      }
+    },
+    "fiap-database": {
+      "release": "release/v0.3.0",
+      "refs": {
+        "develop": "4000fb452f5fbb64372c1bd33f352e6e0b37ebec",
+        "release/v0.3.0": "bf1dd88922e62387c50b6b7aa43a9a8b8999bb0d",
+        "prod": "3c77e13e4c26be0b664900b03c35234f15a1c1fa",
+        "main": "9435d5d0c1e810aebcfa514c098b6a48cbd72a32"
+      }
+    },
+    "fiap-lambda": {
+      "release": "release/v0.3.0",
+      "refs": {
+        "develop": "afd05f4a9e4112ad32cb9eb218355c0cfc38c317",
+        "release/v0.3.0": "26d884ab5cfd6b5df9da40c5c6fd687d31c52218",
+        "prod": "50a8837959664235067323074bea169d0e7b7331",
+        "main": "e66c0a80dd6a39c9a49bd89d08a7e348df83d988"
+      }
+    },
+    "fiap-application": {
+      "release": "release/v0.3.0",
+      "refs": {
+        "develop": "81669c9c9598f3c4de7e0e9c12f2236f08fd8d30",
+        "release/v0.3.0": "aed6b84fb63df8d08450148a27d67b86797fbc24",
+        "prod": "c7fb44e2d28c79d98dff1eb9f7c6eacd31a72429",
+        "main": "2b491a8f291296686dab76a855e8fb409fe8b249"
+      }
+    }
+  }
+}
