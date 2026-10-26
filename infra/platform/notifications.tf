@@ -17,9 +17,9 @@ resource "aws_iam_role" "application_notifications" {
 }
 
 resource "aws_iam_role_policy" "application_notifications" {
-  for_each = aws_iam_role.application_notifications
+  for_each = toset(["develop", "homol", "prod"])
   name     = "fiap-notification-invoke"
-  role     = each.value.id
+  role     = aws_iam_role.application_notifications[each.key].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{ Effect = "Allow", Action = ["lambda:InvokeFunction"],
@@ -28,10 +28,10 @@ resource "aws_iam_role_policy" "application_notifications" {
 }
 
 resource "aws_eks_pod_identity_association" "application_notifications" {
-  for_each        = aws_iam_role.application_notifications
+  for_each        = toset(["develop", "homol", "prod"])
   cluster_name    = aws_eks_cluster.main.name
   namespace       = each.key
   service_account = "fiap-application"
-  role_arn        = each.value.arn
+  role_arn        = aws_iam_role.application_notifications[each.key].arn
   depends_on      = [aws_eks_addon.pod_identity, aws_iam_role_policy.application_notifications]
 }
