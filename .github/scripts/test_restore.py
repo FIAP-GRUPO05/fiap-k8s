@@ -70,3 +70,11 @@ class ReconstructionSafetyTests(unittest.TestCase):
     def test_full_reconstruction_requires_explicit_execution(self):
         with patch.object(self.task, "identity"), self.assertRaises(ValueError):
             self.task.stage("all")
+
+    def test_activation_releases_central_guard_only_after_all_repository_variables(self):
+        calls = []
+        with patch.object(self.task, "identity"), patch.object(self.task, "validate"), \
+             patch.object(self.task, "variables", side_effect=lambda state: calls.append("repositories-" + state)), \
+             patch.object(self.task, "control", side_effect=lambda state: calls.append("central-" + state)):
+            self.task.stage("activate")
+        self.assertEqual(calls, ["repositories-active", "central-active"])

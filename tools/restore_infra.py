@@ -1,4 +1,4 @@
-"""Administrative reconstruction after destroy; no mutation without --execute.
+"""Administrative reconstruction after destroy; no provisioning without --execute.
 
 Uses the four sibling repositories, saved Terraform plans and retained IAM imports.
 Keeps CI in maintenance until explicitly activated after real validation.
@@ -90,8 +90,8 @@ class Restore:
                  "--versioning-configuration", "Status=Enabled", mutation=True)
         self.aws("s3api", "put-bucket-encryption", "--bucket", BUCKET, "--server-side-encryption-configuration",
                  json.dumps({"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}), mutation=True)
-        self.variables("maintenance")
         self.control("maintenance")
+        self.variables("maintenance")
         secrets = self.aws("secretsmanager", "list-secrets", "--include-planned-deletion")["SecretList"]
         for item in secrets:
             if item["Name"].startswith("fiap/") and item.get("DeletedDate"):
@@ -137,7 +137,8 @@ class Restore:
         path = self.workspace / repo / relative
         self.run(["terraform", "init", "-reconfigure", "-backend-config=backend.hcl", "-input=false"], path)
         for attempt in range(4):
-            self.run(["terraform", "plan", "-input=false", "-out=restore.tfplan", *variables], path)
+            lock = [] if self.execute else ["-lock=false"]
+            self.run(["terraform", "plan", "-input=false", "-out=restore.tfplan", *lock, *variables], path)
             plan = json.loads(self.run(["terraform", "show", "-json", "restore.tfplan"], path))
             self.no_deletions(plan)
             if not self.execute:
@@ -297,8 +298,8 @@ class Restore:
         elif stage == "validate": self.validate()
         elif stage == "activate":
             self.validate()
-            self.control("active")
             self.variables("active")
+            self.control("active")
         elif stage == "all":
             if not self.execute or not self.recipient:
                 raise ValueError("Full reconstruction requires --execute and --test-recipient")
