@@ -43,7 +43,7 @@ resource "aws_iam_role_policy" "github_lambda_terraform" {
       },
       {
         Effect = "Allow", Action = ["lambda:CreateFunction", "lambda:DeleteFunction", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:PublishVersion", "lambda:ListVersionsByFunction", "lambda:ListTags", "lambda:TagResource", "lambda:UntagResource", "lambda:CreateAlias", "lambda:GetAlias", "lambda:UpdateAlias", "lambda:DeleteAlias", "lambda:AddPermission", "lambda:GetPolicy", "lambda:RemovePermission"], Resource = [
-          "arn:aws:lambda:sa-east-1:456687462806:function:fiap-auth-*"
+          "arn:aws:lambda:sa-east-1:456687462806:function:fiap-auth-*", "arn:aws:lambda:sa-east-1:456687462806:function:fiap-email-*"
         ]
       },
       {
@@ -53,7 +53,7 @@ resource "aws_iam_role_policy" "github_lambda_terraform" {
         Effect = "Allow", Action = ["apigateway:GET", "apigateway:POST", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE"], Resource = ["arn:aws:apigateway:sa-east-1::/vpclinks", "arn:aws:apigateway:sa-east-1::/vpclinks/*"]
       },
       {
-        Effect = "Allow", Action = ["lambda:GetFunctionCodeSigningConfig"], Resource = "arn:aws:lambda:sa-east-1:456687462806:function:fiap-auth-*"
+        Effect = "Allow", Action = ["lambda:GetFunctionCodeSigningConfig"], Resource = ["arn:aws:lambda:sa-east-1:456687462806:function:fiap-auth-*", "arn:aws:lambda:sa-east-1:456687462806:function:fiap-email-*"]
       },
       {
         Effect = "Allow", Action = ["logs:DescribeLogGroups"], Resource = "*"
@@ -69,11 +69,12 @@ resource "aws_iam_role_policy" "github_lambda_terraform" {
       {
         Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups", "logs:ListTagsForResource", "logs:TagResource", "logs:UntagResource", "logs:PutRetentionPolicy"], Resource = [
           "arn:aws:logs:sa-east-1:456687462806:log-group:/aws/lambda/fiap-auth-*",
+          "arn:aws:logs:sa-east-1:456687462806:log-group:/aws/lambda/fiap-email-*",
           "arn:aws:logs:sa-east-1:456687462806:log-group:/aws/apigateway/fiap-*"
         ]
       },
       {
-        Effect = "Allow", Action = ["iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:UpdateAssumeRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:TagRole", "iam:UntagRole", "iam:PassRole", "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy"], Resource = "arn:aws:iam::456687462806:role/fiap-auth-*"
+        Effect = "Allow", Action = ["iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:UpdateAssumeRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:TagRole", "iam:UntagRole", "iam:PassRole", "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy"], Resource = ["arn:aws:iam::456687462806:role/fiap-auth-*", "arn:aws:iam::456687462806:role/fiap-email-*"]
       }
     ]
   })
