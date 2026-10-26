@@ -78,3 +78,11 @@ class ReconstructionSafetyTests(unittest.TestCase):
              patch.object(self.task, "control", side_effect=lambda state: calls.append("central-" + state)):
             self.task.stage("activate")
         self.assertEqual(calls, ["repositories-active", "central-active"])
+
+    def test_missing_backend_is_detected_before_resource_creation(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            task = restore.Restore(directory, "test-profile")
+            with patch.object(task, "aws") as aws, self.assertRaisesRegex(ValueError, "Missing versioned backend"):
+                task.preflight()
+            aws.assert_not_called()
