@@ -281,6 +281,13 @@ def inventory(client=None):
                 parts = value.strip("/").split("/")
                 if len(parts) >= 2 and parts[0] in {"apis", "vpclinks"} and covered_identifier(service, {parts[1]}, report):
                     handled = True
+            if service == "kms" and value.startswith("key/") and not handled:
+                errors_before = len(report["errors"])
+                key = read("kms", "describe-key", "--key-id", arn, query="KeyMetadata")
+                if len(report["errors"]) == errors_before and key and key.get("KeyState") == "PendingDeletion":
+                    handled = True
+                    report["free_resources"].append({"kind": "kms", "id": key["KeyId"], "state": "PendingDeletion",
+                        "reason": "Chave anterior sem alias, com exclusão pendente confirmada no KMS; sem cobrança durante a espera de exclusão."})
             if service == "ec2" and value.startswith("security-group-rule/") and not handled:
                 rule_id = value.split("/", 1)[1]
                 errors_before = len(report["errors"])
