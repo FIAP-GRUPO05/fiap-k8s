@@ -49,20 +49,22 @@ O primeiro provisionamento é administrativo e respeita a dependência plataform
 
 ## Reconstruir após destroy
 
-O estado atual é `destroyed`. Para conferir a sessão, sem alterar a conta:
+A reconstrução foi validada em 28/10/2026: EKS, RDS, Lambdas e APIs dos três ambientes estão ativos; a CI permanece em `maintenance` durante a integração dos PRs. Esse modo bloqueia deploys, mas não desliga recursos nem interrompe cobranças AWS. Para conferir a sessão, sem alterar a conta:
 
 ```powershell
 aws login --profile twm-admin
 python tools/restore_infra.py --stage status --profile twm-admin-terraform
 ```
 
-O perfil `twm-admin-terraform` deve usar `credential_process` para exportar a sessão temporária do `twm-admin`. Com os quatro repositórios lado a lado, configure um remetente SES e um destinatário de teste autorizados:
+O perfil `twm-admin-terraform` deve usar `credential_process` para exportar a sessão temporária do `twm-admin`. Após uma desmontagem, com os quatro repositórios lado a lado, configure um remetente SES e um destinatário de teste autorizados:
 
 ```powershell
 python tools/restore_infra.py --stage all --execute --sender 'remetente@dominio.com' --test-recipient 'teste@dominio.com'
 ```
 
 O script para se o remetente SES ainda não estiver verificado, importa IAM/OIDC preservados, reconcilia dashboards e alertas existentes do New Relic para evitar duplicação, restaura segredos ainda recuperáveis, recusa planos com exclusões/substituições e mantém a CI em `maintenance`. A reconstrução exige reconciliação dos estados anteriores; mensagens de falha devem ser resolvidas antes de retomar a etapa. Consulte `--help` para executar uma etapa individual. O script não substitui a revisão dos planos e só altera recursos com `--execute`.
+
+Não repita `--stage all` sobre a instalação já reconstruída: confira o estado e retome somente a etapa pendente. O bootstrap inicial desabilita temporariamente o proxy do backend, que já está habilitado na instalação concluída.
 
 Depois de reconstruir, ele atualiza `FIAP_RUNTIME_CONFIG` e os endpoints do monitor de uptime. A ativação é uma etapa explícita: `--stage activate --execute`, com os mesmos remetente/destinatário, após os regressivos reais. Para desligar, use `feature/destroy-infra-aws` → `ALL`, com as aprovações exigidas; o relatório inclui as Lambdas de e-mail e distingue recursos removidos dos retidos.
 
