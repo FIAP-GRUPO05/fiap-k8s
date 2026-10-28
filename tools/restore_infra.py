@@ -69,6 +69,20 @@ class Restore:
             self.aws("s3api", "put-object", "--bucket", BUCKET, "--key", "fiap/operations/state.json",
                      "--body", str(path), mutation=True)
 
+    def preflight(self):
+        roots = (("fiap-k8s", "infra/bootstrap"), ("fiap-k8s", "infra/platform"),
+                 ("fiap-k8s", "infra/observability"), ("fiap-database", "infra/managed"),
+                 ("fiap-lambda", "infra/managed"), ("fiap-application", "infra/registry"))
+        for repo, relative in roots:
+            if not (self.workspace / repo / relative / "backend.hcl").is_file():
+                raise ValueError("Missing versioned backend configuration: " + repo + "/" + relative + "/backend.hcl")
+        for executable in ("aws", "terraform", "docker", "git", "gh", self.trivy):
+            if shutil.which(executable) is None and not Path(executable).is_file():
+                raise ValueError("Required executable is unavailable: " + executable)
+        python = self.workspace / "fiap-lambda/.venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+        if not python.is_file():
+            raise ValueError("Create the fiap-lambda .venv with requirements-dev.txt before reconstruction")
+
     def prepare(self):
         self.identity()
         if not self.sender or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", self.sender):
@@ -303,6 +317,7 @@ class Restore:
         elif stage == "all":
             if not self.execute or not self.recipient:
                 raise ValueError("Full reconstruction requires --execute and --test-recipient")
+            self.preflight()
             for name in ("prepare", "bootstrap", "platform", "observability", "database", "lambda", "application", "gateway", "sync", "validate"):
                 print("Reconstruction stage:", name, flush=True)
                 self.stage(name)
