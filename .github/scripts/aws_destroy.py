@@ -14,7 +14,7 @@ PROJECT = "fiap-tech-challenge-fase-3"
 BUCKET = "fiap-tfstate-" + ACCOUNT
 CONTROL = "fiap/operations/state.json"
 CLUSTER = "fiap-shared"
-FUNCTIONS = {"fiap-auth-develop", "fiap-auth-homol", "fiap-auth-prod", "fiap-uptime-probe", "fiap-observability-probe"}
+FUNCTIONS = {"fiap-auth-develop", "fiap-auth-homol", "fiap-auth-prod", "fiap-email-develop", "fiap-email-homol", "fiap-email-prod", "fiap-uptime-probe", "fiap-observability-probe"}
 APIS = {"fiap-develop", "fiap-homol", "fiap-prod"}
 BUILDS = {"fiap-platform-bootstrap", "fiap-database-bootstrap", "fiap-eks-deploy"}
 LOG_GROUPS = ({"/aws/lambda/" + name for name in FUNCTIONS}
@@ -104,7 +104,7 @@ def covered_identifier(service, candidates, report):
              "eks": {"eks"}, "rds": {"rds", "rds-snapshot", "rds-backup", "rds-subnet-group"},
              "lambda": {"lambda"}, "apigateway": {"api", "vpc-link"}, "kms": {"kms", "aws-managed-kms"},
              "ecr": {"ecr"}, "s3": {"bucket"}, "logs": {"logs"}, "codebuild": {"codebuild"},
-             "events": {"rule"}, "autoscaling": {"asg"}, "secretsmanager": {"secret"}}
+             "events": {"rule"}, "autoscaling": {"asg"}, "secretsmanager": {"secret"}, "ses": {"ses-identity"}}
     accepted = set()
     for item in report["resources"] + report["free_resources"]:
         if item["kind"] in kinds.get(service, set()):
@@ -255,6 +255,11 @@ def inventory(client=None):
     for provider in providers:
         if provider.endswith("/token.actions.githubusercontent.com"):
             report["free_resources"].append({"kind": "oidc", "id": provider, "state": "Retained", "reason": "Sem tarifa direta de provisionamento."})
+    for identity in read("sesv2", "list-email-identities", query="EmailIdentities[].IdentityName") or []:
+        metadata = read("sesv2", "get-email-identity", "--email-identity", identity) or {}
+        if owned(metadata.get("Tags")):
+            report["free_resources"].append({"kind": "ses-identity", "id": identity, "state": "Retained",
+                "reason": "Identidade de remetente sem envio agendado; sua retenção não executa mensagens nem gera tarifa de armazenamento."})
     identifiers = {item["id"] for item in report["resources"] + report["free_resources"]}
     for item in report["resources"]:
         identifiers.update(item.get("children", []))
@@ -276,6 +281,13 @@ def inventory(client=None):
                 parts = value.strip("/").split("/")
                 if len(parts) >= 2 and parts[0] in {"apis", "vpclinks"} and covered_identifier(service, {parts[1]}, report):
                     handled = True
+            if service == "kms" and value.startswith("key/") and not handled:
+                errors_before = len(report["errors"])
+                key = read("kms", "describe-key", "--key-id", arn, query="KeyMetadata")
+                if len(report["errors"]) == errors_before and key and key.get("KeyState") == "PendingDeletion":
+                    handled = True
+                    report["free_resources"].append({"kind": "kms", "id": key["KeyId"], "state": "PendingDeletion",
+                        "reason": "Chave anterior sem alias, com exclusão pendente confirmada no KMS; sem cobrança durante a espera de exclusão."})
             if service == "ec2" and value.startswith("security-group-rule/") and not handled:
                 rule_id = value.split("/", 1)[1]
                 errors_before = len(report["errors"])
