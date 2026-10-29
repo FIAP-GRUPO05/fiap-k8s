@@ -1,11 +1,15 @@
 variable "api_endpoints" {
-  type = map(string)
-  default = {
-    develop = "https://szjrcgb6vj.execute-api.sa-east-1.amazonaws.com"
-    homol   = "https://3n6qyl3n18.execute-api.sa-east-1.amazonaws.com"
-    prod    = "https://rf4lntvt1f.execute-api.sa-east-1.amazonaws.com"
+  type    = map(string)
+  default = {}
+
+  description = "Current API Gateway endpoints synchronized from runtime config; empty disables the schedule during reconstruction."
+  validation {
+    condition = length(var.api_endpoints) == 0 || (
+      toset(keys(var.api_endpoints)) == toset(["develop", "homol", "prod"]) &&
+      alltrue([for url in values(var.api_endpoints) : can(regex("^https://[a-z0-9]+\\.execute-api\\.sa-east-1\\.amazonaws\\.com$", url))])
+    )
+    error_message = "Use all three current API Gateway endpoints or an empty map during bootstrap."
   }
-  description = "Fixed public API Gateway endpoints for external HTTPS health and JWKS checks."
 }
 
 data "archive_file" "uptime" {
@@ -59,6 +63,7 @@ resource "aws_cloudwatch_event_rule" "uptime" {
   name                = "fiap-uptime-every-five-minutes"
   description         = "Check all three public FIAP environments"
   schedule_expression = "rate(5 minutes)"
+  state               = length(var.api_endpoints) == 3 ? "ENABLED" : "DISABLED"
 }
 
 resource "aws_cloudwatch_event_target" "uptime" {

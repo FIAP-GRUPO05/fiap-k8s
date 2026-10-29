@@ -242,7 +242,10 @@ jobs:
         FIAP_INFRA_STATE: ${{ vars.FIAP_INFRA_STATE }}
       run: python .github/scripts/infra_guard.py
     - name: Aplicar EKS, rede e executores privados
+      env:
+        FIAP_RUNTIME_CONFIG: ${{ vars.FIAP_RUNTIME_CONFIG }}
       run: |
+        export TF_VAR_api_endpoints="$(python -c 'import os,json; c=json.loads(os.environ.get("FIAP_RUNTIME_CONFIG") or "{}"); print(json.dumps({k:v["api_url"] for k,v in c.items()}))')"
         terraform -chdir=infra/platform init -backend-config=backend.hcl -input=false
         terraform -chdir=infra/platform plan -input=false -out=platform.tfplan
         terraform -chdir=infra/platform apply -input=false -auto-approve platform.tfplan

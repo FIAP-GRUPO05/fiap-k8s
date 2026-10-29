@@ -1,5 +1,5 @@
 locals {
-  platform_role_names        = ["fiap-shared-eks-cluster", "fiap-shared-eks-nodes", "fiap-aws-load-balancer-controller", "fiap-eks-deploy-runner", "fiap-platform-bootstrap", "fiap-observability-probe", "fiap-uptime-probe"]
+  platform_role_names        = ["fiap-shared-eks-cluster", "fiap-shared-eks-nodes", "fiap-aws-load-balancer-controller", "fiap-eks-deploy-runner", "fiap-platform-bootstrap", "fiap-observability-probe", "fiap-uptime-probe", "fiap-application-develop", "fiap-application-homol", "fiap-application-prod"]
   platform_network_resources = [for kind in ["vpc", "subnet", "internet-gateway", "route-table", "elastic-ip", "natgateway", "vpc-endpoint", "security-group", "security-group-rule", "network-interface"] : "arn:aws:ec2:sa-east-1:456687462806:${kind}/*"]
 }
 

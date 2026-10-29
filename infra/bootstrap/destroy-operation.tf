@@ -13,7 +13,7 @@ locals {
         "ecr:DescribeRepositories", "s3:ListAllMyBuckets", "logs:DescribeLogGroups",
         "codebuild:ListProjects", "codebuild:ListBuildsForProject", "codebuild:BatchGetBuilds",
         "events:ListRules", "events:ListTargetsByRule", "iam:ListRoles", "iam:ListOpenIDConnectProviders", "autoscaling:DescribeAutoScalingGroups",
-        "ec2:DescribeRegions", "tag:GetResources"
+        "ec2:DescribeRegions", "tag:GetResources", "ses:ListEmailIdentities", "ses:GetEmailIdentity"
       ]
       Resource = "*"
     },
@@ -62,7 +62,7 @@ locals {
     {
       Effect   = "Allow"
       Action   = ["lambda:DeleteFunction"]
-      Resource = [for function in ["fiap-auth-develop", "fiap-auth-homol", "fiap-auth-prod", "fiap-uptime-probe", "fiap-observability-probe"] : "arn:aws:lambda:sa-east-1:456687462806:function:${function}"]
+      Resource = [for function in ["fiap-auth-develop", "fiap-auth-homol", "fiap-auth-prod", "fiap-email-develop", "fiap-email-homol", "fiap-email-prod", "fiap-uptime-probe", "fiap-observability-probe"] : "arn:aws:lambda:sa-east-1:456687462806:function:${function}"]
     },
     {
       Effect   = "Allow"
