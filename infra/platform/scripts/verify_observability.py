@@ -1,6 +1,7 @@
 """Return aggregate telemetry health; never expose New Relic credentials."""
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 
@@ -44,6 +45,15 @@ def lambda_handler(event, context):
     logs = count(f"SELECT count(*) AS samples FROM Log WHERE namespace_name = '{environment}' AND correlationId IS NOT NULL SINCE 15 minutes ago") if require_business else 0
     require_uptime = event.get("require_uptime") is True
     uptime = count(f"SELECT count(*) AS samples FROM FiapUptimeCheck WHERE environment = '{environment}' AND healthy = 1 SINCE 15 minutes ago") if require_uptime else 0
-    return {"healthy": cluster > 0 and (application > 0 or not require_apm) and (business > 0 and logs > 0 or not require_business) and (uptime > 0 or not require_uptime),
+    require_notifications = event.get("require_notifications") is True
+    correlation = event.get("correlation_id", "")
+    if require_notifications and not re.fullmatch(r"[A-Za-z0-9._-]{1,64}", correlation):
+        raise ValueError("A safe correlation_id is required to verify notifications")
+    log_scope = f"namespace_name = '{environment}' AND correlationId = '{correlation}'"
+    notification_success = count(f"SELECT count(*) AS samples FROM Log WHERE {log_scope} AND logger_name LIKE '%LambdaEmailSenderAdapter' AND message LIKE 'Notification provider accepted%' SINCE 15 minutes ago") if require_notifications else 0
+    notification_failures = count(f"SELECT count(*) AS samples FROM Log WHERE {log_scope} AND logger_name LIKE '%ServiceOrderStatusChangedNotificationHandler' AND level = 'ERROR' SINCE 15 minutes ago") if require_notifications else 0
+    return {"healthy": cluster > 0 and (application > 0 or not require_apm) and (business > 0 and logs > 0 or not require_business) and (uptime > 0 or not require_uptime)
+            and (notification_success > 0 and notification_failures == 0 or not require_notifications),
             "environment": environment, "cluster_samples": cluster, "application_samples": application,
-            "business_samples": business, "correlated_logs": logs, "uptime_samples": uptime}
+            "business_samples": business, "correlated_logs": logs, "uptime_samples": uptime,
+            "notification_success": notification_success, "notification_failures": notification_failures}

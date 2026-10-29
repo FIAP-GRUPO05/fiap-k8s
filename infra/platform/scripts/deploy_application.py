@@ -25,6 +25,8 @@ def kubectl(*args, document=None, capture=False):
 def apply(document):
     kubectl("apply", "--server-side", "--field-manager=fiap-cicd", "-f", "-", document=document)
 
+apply({"apiVersion": "v1", "kind": "ServiceAccount", "metadata": {"name": "fiap-application"},
+       "automountServiceAccountToken": False})
 client = boto3.client("secretsmanager")
 db = json.loads(client.get_secret_value(SecretId=f"fiap/{env}/postgres")["SecretString"])
 app = json.loads(client.get_secret_value(SecretId=f"fiap/{env}/application")["SecretString"])
@@ -40,7 +42,8 @@ container = {
     "name": "api-container", "image": image, "imagePullPolicy": "IfNotPresent",
     "ports": [{"name": "http", "containerPort": 8080}],
     "envFrom": [{"secretRef": {"name": "api-secret"}}],
-    "env": [{"name": "MAIL_TIPE", "value": "NONE"}, {"name": "NEW_RELIC_APP_NAME", "value": f"fiap-api-{env}"},
+    "env": [{"name": "MAIL_TIPE", "value": "LAMBDA"}, {"name": "AWS_REGION", "value": "sa-east-1"},
+        {"name": "NOTIFICATIONS_LAMBDA_FUNCTION", "value": f"fiap-email-{env}:live"}, {"name": "NEW_RELIC_APP_NAME", "value": f"fiap-api-{env}"},
         {"name": "SPRING_PROFILES_ACTIVE", "value": "json-logs"},
         {"name": "NEW_RELIC_LOG", "value": "STDOUT"},
         {"name": "SERVER_SERVLET_CONTEXT_PATH", "value": prefix}],
@@ -57,7 +60,7 @@ container["startupProbe"]["failureThreshold"] = 36
 apply({"apiVersion": "apps/v1", "kind": "Deployment", "metadata": {"name": "api-deployment"}, "spec": {
     "selector": {"matchLabels": {"app": "api"}}, "template": {
         "metadata": {"labels": {"app": "api", "environment": env}}, "spec": {
-            "automountServiceAccountToken": False,
+            "serviceAccountName": "fiap-application", "automountServiceAccountToken": False,
             "securityContext": {"runAsNonRoot": True, "runAsUser": 1001, "runAsGroup": 1001,
                 "fsGroup": 1001, "seccompProfile": {"type": "RuntimeDefault"}},
             "containers": [container], "volumes": [{"name": "java-tmp", "emptyDir": {"sizeLimit": "128Mi"}}],
