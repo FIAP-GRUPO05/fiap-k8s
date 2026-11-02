@@ -1,0 +1,25 @@
+flowchart LR
+    Client[Cliente HTTPS] --> APIGW["API Gateway por ambiente (fiap-lambda)"]
+    APIGW --> VPCL[VPC Link]
+    subgraph VPC["VPC privada sa-east-1"]
+        VPCL --> ALB["ALB interno fiap-shared-api"]
+        subgraph EKS["EKS fiap-shared: 2 nós t3.medium fixos"]
+            ALB --> INGD[Ingress /develop] --> PD["Pods API develop<br/>HPA 1–2"]
+            ALB --> INGH[Ingress /homol] --> PH["Pods API homol<br/>HPA 1–2"]
+            ALB --> INGP[Ingress /prod] --> PP["Pods API prod<br/>HPA 2–4"]
+            NRI["New Relic nri-bundle"]
+        end
+        PD & PH & PP --> RDS[("RDS PostgreSQL (fiap-database)")]
+        CB[CodeBuild privado] --> EKS
+    end
+    PD & PH & PP -. Pod Identity .-> MAIL[Lambda de e-mail do ambiente]
+    ECR[ECR: imagens por commit] --> EKS
+    GitHub[GitHub Actions / OIDC] --> IAM[IAM por repositório e ambiente]
+    IAM --> TF[Terraform] --> VPC
+    IAM --> CB
+    NRI --> NR[New Relic: métricas, logs, traces e alertas]
+    EB["EventBridge rate(5 min)"] --> UP[Lambda fiap-uptime-probe]
+    UP -->|health e JWKS| APIGW
+    UP --> NR
+    PROBE[Lambda fiap-observability-probe] -->|consulta telemetria| NR
+    CB -.->|verifica após deploy| PROBE
