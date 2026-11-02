@@ -15,6 +15,7 @@ def count(query):
     if _credentials is None:
         _credentials = json.loads(boto3.client("secretsmanager").get_secret_value(
             SecretId=os.environ["NEW_RELIC_SECRET_ARN"])["SecretString"])
+    # Cached only within one invocation; lambda_handler clears it so a rotated key is picked up.
     account = int(_credentials["account_id"])
     endpoint = "https://api.eu.newrelic.com/graphql" if _credentials.get("region", "US") == "EU" else "https://api.newrelic.com/graphql"
     graph = "{ actor { account(id: %d) { nrql(query: %s) { results } } } }" % (account, json.dumps(query))
@@ -34,6 +35,8 @@ def count(query):
 
 
 def lambda_handler(event, context):
+    global _credentials
+    _credentials = None
     environment = event.get("environment", "develop")
     if environment not in {"develop", "homol", "prod"}:
         raise ValueError("Invalid environment")

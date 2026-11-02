@@ -1,4 +1,5 @@
 """Bootstrap namespaces and the New Relic Kubernetes/Java integration."""
+import base64
 import json
 import os
 import subprocess
@@ -61,6 +62,28 @@ for environment in ("develop", "homol", "prod"):
             "namespaceLabelSelector": {"matchLabels": {"kubernetes.io/metadata.name": environment}},
         }})
 run("kubectl", "get", "pods", "-n", "newrelic")
+
+# The Java agent injected by k8s-agents-operator reads the license from the
+# `newrelic-key-secret` of each application namespace. The operator only copies
+# that secret when it is missing, so a rotated key would never reach the agent.
+# Rewrite it from Secrets Manager (via stdin, never in process arguments) and
+# restart existing API pods only when the key actually changed.
+for environment in ("develop", "homol", "prod"):
+    current = subprocess.run(("kubectl", "-n", environment, "get", "secret", "newrelic-key-secret",
+        "-o", "jsonpath={.data.new_relic_license_key}"), capture_output=True, text=True)
+    changed = current.returncode != 0 or base64.b64decode(current.stdout or "").decode() != credentials["license_key"]
+    if not changed:
+        continue
+    run("kubectl", "-n", environment, "delete", "secret", "newrelic-key-secret", "--ignore-not-found")
+    run("kubectl", "-n", environment, "create", "-f", "-", document={"apiVersion": "v1", "kind": "Secret",
+        "metadata": {"name": "newrelic-key-secret", "namespace": environment}, "type": "Opaque",
+        "stringData": {"new_relic_license_key": credentials["license_key"]}})
+    deployment = subprocess.run(("kubectl", "-n", environment, "get", "deployment", "api-deployment"),
+        capture_output=True, text=True)
+    if deployment.returncode == 0:
+        run("kubectl", "-n", environment, "rollout", "restart", "deployment/api-deployment")
+        run("kubectl", "-n", environment, "rollout", "status", "deployment/api-deployment", "--timeout=8m")
+    print(f"New Relic license propagated to namespace {environment}")
 probe = boto3.client("lambda")
 for attempt in range(12):
     response = probe.invoke(FunctionName="fiap-observability-probe", Payload=b'{"require_apm":false}')

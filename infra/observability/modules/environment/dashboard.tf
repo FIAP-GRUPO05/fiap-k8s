@@ -26,10 +26,15 @@ resource "newrelic_nrql_alert_condition" "service_order_failures" {
   enabled                      = true
   violation_time_limit_seconds = 3600
   aggregation_window           = 60
-  aggregation_method           = "event_flow"
-  aggregation_delay            = 120
-  fill_option                  = "static"
-  fill_value                   = 0
+  # event_timer fecha cada janela 60 s após o último evento: erros são esporádicos e,
+  # com event_flow, as janelas sem eventos novos nunca eram avaliadas (incidente não fechava).
+  aggregation_method             = "event_timer"
+  aggregation_timer              = 60
+  fill_option                    = "static"
+  fill_value                     = 0
+  expiration_duration            = 300
+  open_violation_on_expiration   = false
+  close_violations_on_expiration = true
 
   nrql {
     query = "SELECT count(*) FROM Transaction WHERE ${local.nr_service_orders} AND http.statusCode >= 500"
@@ -92,7 +97,7 @@ resource "newrelic_one_dashboard" "fiap_api" {
       width  = 6
       height = 3
       nrql_query {
-        query = "SELECT percentage(count(*), WHERE isReady = true) AS 'amostras prontas' FROM K8sPodSample WHERE clusterName = '${var.cluster_name}' AND namespaceName = '${var.environment}' AND podName LIKE 'api-deployment%'"
+        query = "SELECT percentage(count(*), WHERE isReady = 1) AS 'amostras prontas' FROM K8sPodSample WHERE clusterName = '${var.cluster_name}' AND namespaceName = '${var.environment}' AND podName LIKE 'api-deployment%'"
       }
     }
 
