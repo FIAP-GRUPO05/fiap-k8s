@@ -10,8 +10,6 @@ import urllib.request
 
 import boto3
 
-_credentials = None
-
 
 def check(item):
     environment, base = item
@@ -42,10 +40,10 @@ def check(item):
 
 
 def lambda_handler(event, context):
-    global _credentials
-    if _credentials is None:
-        _credentials = json.loads(boto3.client("secretsmanager").get_secret_value(
-            SecretId=os.environ["NEW_RELIC_SECRET_ARN"])["SecretString"])
+    # Read the secret on every run (every 5 minutes): a warm container must not keep
+    # a rotated New Relic license key, or uptime ingestion fails until a cold start.
+    _credentials = json.loads(boto3.client("secretsmanager").get_secret_value(
+        SecretId=os.environ["NEW_RELIC_SECRET_ARN"])["SecretString"])
     endpoints = json.loads(os.environ["API_ENDPOINTS"])
     if set(endpoints) != {"develop", "homol", "prod"}:
         raise ValueError("Three environment endpoints are required")
