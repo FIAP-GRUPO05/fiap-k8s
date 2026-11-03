@@ -1,48 +1,48 @@
 {
   "schema": 1,
-  "request_id": "70e9679d-15c6-49a8-ad80-f232186cdb29",
-  "requested_by": "codewesleylima",
+  "request_id": "cb50beee-7d56-45b2-a98b-3bd6ca0b94e9",
+  "requested_by": "timbeck97",
   "account": "456687462806",
   "region": "sa-east-1",
   "confirmation": "DESTRUIR-456687462806",
   "delete_project_data": true,
-  "implementation_sha": "f6668184a3fd61a29270c462f5ff5f7b9583df3b",
-  "billing_start": "2026-10-01",
+  "implementation_sha": "9dee23752d1599fc2d6b94e968bf741b131253d9",
+  "billing_start": "2026-11-01",
   "repositories": {
     "fiap-k8s": {
-      "release": "release/v0.4.2",
+      "release": "release/v0.5.2",
       "refs": {
-        "develop": "1528a6d8ad882e3eb435fc9089b16f566c774f7d",
-        "release/v0.4.2": "63e1c71bad21044f97e2a2e1b065e474863dfa66",
-        "prod": "05536a3a80d8fccc406b8aeac40c1a5f689a953b",
-        "main": "f6668184a3fd61a29270c462f5ff5f7b9583df3b"
+        "develop": "0c30742e1ec8835b847c017b0d49023a471b39e4",
+        "release/v0.5.2": "2e317056f7e84733bb18f841e0df0bfc96a78527",
+        "prod": "ec764935187965bfe4afbb11703ca4833fea649a",
+        "main": "9dee23752d1599fc2d6b94e968bf741b131253d9"
       }
     },
     "fiap-database": {
-      "release": "release/v0.3.0",
+      "release": "release/v0.3.1",
       "refs": {
-        "develop": "4000fb452f5fbb64372c1bd33f352e6e0b37ebec",
-        "release/v0.3.0": "bf1dd88922e62387c50b6b7aa43a9a8b8999bb0d",
-        "prod": "3c77e13e4c26be0b664900b03c35234f15a1c1fa",
-        "main": "9435d5d0c1e810aebcfa514c098b6a48cbd72a32"
+        "develop": "8964c0c7957928b70a978422d58f43a9c4bf3842",
+        "release/v0.3.1": "b3de2a9eca3ceba8edf44ce56ab9269bbbfb5a36",
+        "prod": "28a375a86b86235b9f695f6223d6f96a9b038764",
+        "main": "51b497fddcdaa76a31179460a68c48431258b13e"
       }
     },
     "fiap-lambda": {
-      "release": "release/v0.3.0",
+      "release": "release/v0.4.1",
       "refs": {
-        "develop": "afd05f4a9e4112ad32cb9eb218355c0cfc38c317",
-        "release/v0.3.0": "26d884ab5cfd6b5df9da40c5c6fd687d31c52218",
-        "prod": "50a8837959664235067323074bea169d0e7b7331",
-        "main": "e66c0a80dd6a39c9a49bd89d08a7e348df83d988"
+        "develop": "71575993ade7f66c49680de84bafbddeb7fb7f71",
+        "release/v0.4.1": "ca7c3d96ce1eb74fa54b81d1ff58299bce8cc06f",
+        "prod": "fdd6cbf6bf675c05b2009485df4b0fbcb7845e23",
+        "main": "4d20915d8864d38e207833b6bc894bcda1cbedab"
       }
     },
     "fiap-application": {
-      "release": "release/v0.3.0",
+      "release": "release/v0.4.3",
       "refs": {
-        "develop": "81669c9c9598f3c4de7e0e9c12f2236f08fd8d30",
-        "release/v0.3.0": "aed6b84fb63df8d08450148a27d67b86797fbc24",
-        "prod": "c7fb44e2d28c79d98dff1eb9f7c6eacd31a72429",
-        "main": "2b491a8f291296686dab76a855e8fb409fe8b249"
+        "develop": "cd1e6aec432ceeb15cd678116f831d59a97b666d",
+        "release/v0.4.3": "a4adbcbe385c29dc0b29611029fe1dd403da11b9",
+        "prod": "a4adbcbe385c29dc0b29611029fe1dd403da11b9",
+        "main": "2b25e8fef776c4ffc23e4e18c341687d757bca22"
       }
     }
   }
