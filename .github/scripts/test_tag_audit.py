@@ -70,3 +70,36 @@ class DeletedRuleAuditTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RdsManagedSecretAuditTests(unittest.TestCase):
+    secret = f"arn:aws:secretsmanager:{cloud.REGION}:{cloud.ACCOUNT}:secret:rds!db-00000000-0000-0000-0000-000000000000-AbCdEf"
+
+    def inventory(self, managed):
+        class Fake:
+            def identity(self):
+                return {"Account": cloud.ACCOUNT}
+
+            def run(self, service, operation, *arguments, **kwargs):
+                if (service, operation) == ("ec2", "describe-regions"):
+                    return [cloud.REGION]
+                if (service, operation) == ("resourcegroupstaggingapi", "get-resources"):
+                    return [RdsManagedSecretAuditTests.secret]
+                if (service, operation) == ("rds", "describe-db-instances"):
+                    database = {"DBInstanceIdentifier": "fiap-shared-postgres", "DeletionProtection": False,
+                                "DBInstanceStatus": "available",
+                                "TagList": [{"Key": "Project", "Value": cloud.PROJECT}]}
+                    if managed:
+                        database["MasterUserSecret"] = {"SecretArn": RdsManagedSecretAuditTests.secret}
+                    return [database]
+                return []
+
+        return cloud.inventory(Fake())
+
+    def test_secret_managed_by_project_rds_is_covered(self):
+        report = self.inventory(managed=True)
+        self.assertEqual(report["errors"], [])
+
+    def test_unrelated_rds_secret_remains_blocked(self):
+        report = self.inventory(managed=False)
+        self.assertIn("Tagged resource not covered by the teardown engine: " + self.secret, report["errors"])
