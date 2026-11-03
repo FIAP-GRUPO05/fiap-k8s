@@ -111,6 +111,8 @@ def covered_identifier(service, candidates, report):
             accepted.add(item["id"])
             if service == "ec2":
                 accepted.update(item.get("children", []))
+        if service == "secretsmanager" and item["kind"] == "rds":
+            accepted.update(item.get("children", []))
     return bool(candidates & accepted)
 
 
@@ -162,7 +164,9 @@ def inventory(client=None):
     databases = read("rds", "describe-db-instances", query="DBInstances") or []
     for database in databases:
         if database["DBInstanceIdentifier"] == "fiap-shared-postgres" and owned(database.get("TagList")):
-            add("rds", database["DBInstanceIdentifier"], protection=database["DeletionProtection"], status=database["DBInstanceStatus"])
+            managed_secret = (database.get("MasterUserSecret") or {}).get("SecretArn")
+            add("rds", database["DBInstanceIdentifier"], protection=database["DeletionProtection"], status=database["DBInstanceStatus"],
+                children=[managed_secret] if managed_secret else [])
         elif database["DBInstanceIdentifier"] == "fiap-shared-postgres":
             report["errors"].append("RDS ownership tags are missing or unexpected")
     for snapshot in read("rds", "describe-db-snapshots", query="DBSnapshots") or []:
